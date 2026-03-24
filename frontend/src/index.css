@@ -1,2 +1,10 @@
 @import "tailwindcss";
-@plugin "daisyui";
+@plugin "daisyui" {
+  themes: all; /* Ye line hamesha saare themes load karti hai */
+}
+
+/* Check karein ki kahin aapne body par koi background color force toh nahi kiya */
+body {
+  margin: 0;
+  padding: 0;
+}
