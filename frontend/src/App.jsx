@@ -1,13 +1,18 @@
 import React from 'react'
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
+import { useThemeStore } from "./store/useThemeStore";
+import { Toaster } from "react-hot-toast";
 
-function App() {
+const App = () => {
+  const { theme } = useThemeStore();
   return (
-    <div>
+
+    <div data-theme={theme}>
       <Routes>
         <Route path="/login" element={<LoginPage/>} />
       </Routes>
+      <Toaster />
     </div>
   )
 }
