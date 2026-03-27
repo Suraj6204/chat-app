@@ -10,6 +10,7 @@ import { Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { Routes, Route } from "react-router-dom";
 import HomePage from './pages/HomePage';
+import Navbar from './components/Navbar';
 
 const App = () => {
   const { authUser, checkAuth, isCheckingAuth, onlineUsers } = useAuthStore();
@@ -30,6 +31,8 @@ const App = () => {
   
   return (
     <div data-theme={theme} className="min-h-screen transition-all duration-300">
+      <Navbar />
+
       <Routes>
         <Route path="/" element={authUser ? <HomePage /> : <Navigate to="/login" />} />
         <Route path="/signup" element={!authUser ? <SignUpPage /> : <Navigate to="/" />} />

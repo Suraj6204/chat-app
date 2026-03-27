@@ -1,3 +1,6 @@
+import { generateOTP } from "../lib/generateOtp.js";
+import redis from "../lib/redis.js";
+import { sendEmail } from "../lib/sendEmail.js";
 import { generateToken } from "../lib/utils.js";
 import User from "../models/user.model.js";
 import bcrypt from "bcryptjs";
@@ -115,4 +118,71 @@ export const checkAuth = (req, res) => {
     console.log("Error in checkAuth controller", error.message);
     res.status(500).json({ message: "Internal Server Error" });
   }
+};
+
+
+export const sendOTP = async (req, res) => {
+    try {
+        const { email } = req.body;
+        const otp = generateOTP();
+        
+        // OTP ko Redis mein 5 mins ke liye save karein
+        await redis.set(email, otp, 'EX', 300); 
+
+        await sendEmail(email, otp);
+
+        return res.status(200).json({
+            message: "OTP sent to your email",
+            success: true
+        });
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ message: "Error sending OTP", success: false });
+    }
+};
+
+export const verifyEmail = async (req, res) => {
+    try {
+        const { email, otp } = req.body;
+
+        // 1. Redis se OTP uthao
+        const storedOtp = await redis.get(email); 
+
+        // 2. Check agar OTP expire ho gaya ya nahi mila
+        if (!storedOtp) {
+            return res.status(400).json({ 
+              message: "OTP expired. Please resend.", 
+              success: false 
+            });
+        }
+
+        // 3. Match logic
+        if (storedOtp === otp) {
+            // MongoDB update karein
+            const user = await User.findOneAndUpdate({ email }, { isVerified: true }); 
+
+            if (!user) {
+                return res.status(404).json({ message: "User not found", success: false });
+            }
+            
+            // Verification ke baad cleanup
+            await redis.del(email); 
+            
+            return res.status(200).json({ 
+                message: "Email verified successfully!", 
+                success: true 
+            });
+        } else {
+            return res.status(400).json({ 
+                message: "Invalid OTP. Try again.", 
+                success: false 
+            });
+        }
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ 
+            message: "Internal server error", 
+            success: false 
+        });
+    }
 };
