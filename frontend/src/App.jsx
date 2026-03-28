@@ -11,6 +11,7 @@ import { Toaster } from "react-hot-toast";
 import { Routes, Route } from "react-router-dom";
 import HomePage from './pages/HomePage';
 import Navbar from './components/Navbar';
+import EmailVerify from './pages/EmailVerify';
 
 const App = () => {
   const { authUser, checkAuth, isCheckingAuth, onlineUsers } = useAuthStore();
@@ -34,10 +35,12 @@ const App = () => {
       <Navbar />
 
       <Routes>
-        <Route path="/" element={authUser ? <HomePage /> : <Navigate to="/login" />} />
-        <Route path="/signup" element={!authUser ? <SignUpPage /> : <Navigate to="/" />} />
-        <Route path="/login" element={!authUser ? <LoginPage /> : <Navigate to="/" />} />
+        <Route path="/" element={authUser ? (authUser.isVerified ? <HomePage /> : <Navigate to="/verify-email" />) : <Navigate to="/login" />} />
+        <Route path="/signup" element={!authUser ? <SignUpPage /> : (authUser.isVerified ? <Navigate to="/" /> : <Navigate to="/verify-email" />)} />
+        <Route path="/login" element={!authUser ? <LoginPage /> : (authUser.isVerified ? <Navigate to="/" /> : <Navigate to="/verify-email" />)} />
+        <Route path="/verify-email" element={authUser && !authUser.isVerified ? <EmailVerify /> : <Navigate to="/" />} />
       </Routes>
+      
       <Toaster />
     </div>
   )

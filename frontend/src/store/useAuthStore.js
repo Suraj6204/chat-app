@@ -11,14 +11,15 @@ export const useAuthStore = create((set, get) => ({
   isLoggingIn: false,
   isUpdatingProfile: false,
   isCheckingAuth: true,
+  isVerifyingEmail: false,
+  tempEmail: null,
   // onlineUsers: [],
   // socket: null,
 
   checkAuth: async () => {
     try {
       const res = await axiosInstance.get("/auth/check");
-
-      set({ authUser: res.data });
+      set({ authUser: res.data, tempEmail: res.data?.email });
       // get().connectSocket();
     } catch (error) {
       console.log("Error in checkAuth:", error);
@@ -32,11 +33,14 @@ export const useAuthStore = create((set, get) => ({
     set({ isSigningUp: true });
     try {
       const res = await axiosInstance.post("/auth/signup", data);
-      set({ authUser: res.data });
-      toast.success("Account created successfully");
+      set({ authUser: res.data, tempEmail: res.data.email });
+      
+      // Auto-send OTP
+      await axiosInstance.post("/auth/send-otp", { email: res.data.email });
+      toast.success("Account created successfully. Please verify your email.");
       // get().connectSocket();
     } catch (error) {
-      toast.error(error.response.data.message);
+      toast.error(error.response?.data?.message || "Something went wrong");
     } finally {
       set({ isSigningUp: false });
     }
@@ -46,12 +50,17 @@ export const useAuthStore = create((set, get) => ({
     set({ isLoggingIn: true });
     try {
       const res = await axiosInstance.post("/auth/login", data);
-      set({ authUser: res.data });
-      toast.success("Logged in successfully");
-
+      set({ authUser: res.data, tempEmail: res.data.email });
+      
+      if (!res.data.isVerified) {
+        await axiosInstance.post("/auth/send-otp", { email: res.data.email });
+        toast.success("Please verify your email.");
+      } else {
+        toast.success("Logged in successfully");
+      }
       // get().connectSocket();
     } catch (error) {
-      toast.error(error.response.data.message);
+      toast.error(error.response?.data?.message || "Invalid credentials");
     } finally {
       set({ isLoggingIn: false });
     }
@@ -102,4 +111,37 @@ export const useAuthStore = create((set, get) => ({
   // disconnectSocket: () => {
   //   if (get().socket?.connected) get().socket.disconnect();
   // },
+
+  verifyEmail: async (otp) => {
+    set({ isVerifyingEmail: true });
+    try {
+      const email = get().tempEmail || get().authUser?.email; 
+      const res = await axiosInstance.post("/auth/verify-email", { email, otp });
+      
+      toast.success("Email verified!");
+      set({ tempEmail: null }); 
+      // Update checkAuth since DB is updated
+      await get().checkAuth();
+      return true;
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Verification failed");
+      return false;
+    } finally {
+      set({ isVerifyingEmail: false });
+    }
+  },
+
+  resendOTP: async () => {
+    try {
+      const email = get().tempEmail || get().authUser?.email;
+      if (!email) return toast.error("Email not found. Please signup again.");
+      
+      const res = await axiosInstance.post("/auth/send-otp", { email });
+      toast.success("New OTP sent to your email!");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to resend OTP");
+    }
+  },
+
+  setTempEmail: (email) => set({ tempEmail: email }),
 }));
