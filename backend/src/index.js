@@ -9,6 +9,8 @@ import { connectDB } from "./lib/db.js";
 
 import authRoutes from "./routes/auth.route.js";
 import messageRoutes from "./routes/message.route.js";
+import { connectRabbitMQ } from "./lib/rabbitmq.js";
+import { startEmailWorker } from "./lib/emailWorker.js";
 // import { app, server } from "./lib/socket.js";
 
 dotenv.config();
@@ -39,7 +41,10 @@ app.use("/api/messages", messageRoutes);
 //   });
 // }
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log("server is running on PORT:" + PORT);
   connectDB();
+
+  await connectRabbitMQ();
+  startEmailWorker();
 });

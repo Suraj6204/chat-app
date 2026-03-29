@@ -1,4 +1,5 @@
 import { generateOTP } from "../lib/generateOtp.js";
+import { sendToQueue } from "../lib/rabbitmq.js";
 import redis from "../lib/redis.js";
 import { sendEmail } from "../lib/sendEmail.js";
 import { generateToken } from "../lib/utils.js";
@@ -122,7 +123,6 @@ export const checkAuth = (req, res) => {
   }
 };
 
-
 export const sendOTP = async (req, res) => {
     try {
         const { email } = req.body;
@@ -131,7 +131,18 @@ export const sendOTP = async (req, res) => {
         // OTP ko Redis mein 5 mins ke liye save karein
         await redis.set(email, otp, 'EX', 300); 
 
-        await sendEmail(email, otp);
+        const otpHtml = `
+            <div style="font-family: sans-serif; text-align: center; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+                <h2 style="color: #6366f1;">Chatty Verification</h2>
+                <p>Your OTP is given below . It will expire in 5 minutes:</p>
+                <h1 style="background: #f3f4f6; display: inline-block; padding: 10px 20px; border-radius: 5px; letter-spacing: 5px;">
+                    ${otp}
+                </h1>
+                <p style="font-size: 12px; color: #888; margin-top: 20px;">If you didn't request this OTP, please ignore this email.</p>
+            </div>
+        `;
+
+        await sendEmail(email,"Chatty - OTP Verification Code", otpHtml);
 
         return res.status(200).json({
             message: "OTP sent to your email",
@@ -167,6 +178,16 @@ export const verifyEmail = async (req, res) => {
                 return res.status(404).json({ message: "User not found", success: false });
             }
             
+            //RabbitMQ Producer
+            const welcomeData = {
+              email: user.email,
+              name: user.fullName, // Adjust as per your model
+              subject: "Welcome to Chat-App! 🚀"
+            };
+
+            sendToQueue("welcome_emails", welcomeData);
+
+
             // Verification ke baad cleanup
             await redis.del(email); 
             

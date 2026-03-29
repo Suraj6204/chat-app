@@ -28,6 +28,12 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+//for removing unverified users in 24 hours from database
+userSchema.index({ createdAt: 1 }, { 
+  expireAfterSeconds: 86400, // 24 ghante
+  partialFilterExpression: { isVerified: false } 
+});
+
 const User = mongoose.model("User", userSchema);
 
 export default User;

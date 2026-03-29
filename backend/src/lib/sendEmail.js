@@ -2,7 +2,7 @@ import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 dotenv.config();
 
-export const sendEmail = async (email, otp) => {
+export const sendEmail = async (email, subject, htmlContent) => {
     const transporter = nodemailer.createTransport({
         host: 'smtp.gmail.com',
         port: 465,
@@ -16,8 +16,8 @@ export const sendEmail = async (email, otp) => {
     const mailOptions = {
         from: process.env.EMAIL_USER,
         to: email,
-        subject: 'Chat-App - OTP Verification',
-        text: `Your OTP is: ${otp}. It will expire in 5 minutes.`
+        subject: subject,
+        html: htmlContent
     };
 
     await transporter.sendMail(mailOptions);
