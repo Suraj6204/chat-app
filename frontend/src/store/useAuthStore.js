@@ -13,14 +13,14 @@ export const useAuthStore = create((set, get) => ({
   isCheckingAuth: true,
   isVerifyingEmail: false,
   tempEmail: null,
-  // onlineUsers: [],
-  // socket: null,
+  onlineUsers: [],
+  socket: null,
 
   checkAuth: async () => {
     try {
       const res = await axiosInstance.get("/auth/check");
       set({ authUser: res.data, tempEmail: res.data?.email });
-      // get().connectSocket();
+      get().connectSocket();  //connect socket after authentication
     } catch (error) {
       console.log("Error in checkAuth:", error);
       set({ authUser: null });
@@ -38,7 +38,7 @@ export const useAuthStore = create((set, get) => ({
       // Auto-send OTP
       await axiosInstance.post("/auth/send-otp", { email: res.data.email });
       toast.success("Account created successfully. Please verify your email.");
-      // get().connectSocket();
+      get().connectSocket(); 
     } catch (error) {
       toast.error(error.response?.data?.message || "Something went wrong");
     } finally {
@@ -58,7 +58,7 @@ export const useAuthStore = create((set, get) => ({
       } else {
         toast.success("Logged in successfully");
       }
-      // get().connectSocket();
+      get().connectSocket();
     } catch (error) {
       toast.error(error.response?.data?.message || "Invalid credentials");
     } finally {
@@ -71,7 +71,7 @@ export const useAuthStore = create((set, get) => ({
       await axiosInstance.post("/auth/logout");
       set({ authUser: null });
       toast.success("Logged out successfully");
-      // get().disconnectSocket();
+      get().disconnectSocket();
     } catch (error) {
       toast.error(error.response.data.message);
     }
@@ -91,26 +91,28 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
-  // connectSocket: () => {
-  //   const { authUser } = get();
-  //   if (!authUser || get().socket?.connected) return;
+  connectSocket: () => {
+    const { authUser } = get();
+    if (!authUser || get().socket?.connected) return;
 
-  //   const socket = io(BASE_URL, {
-  //     query: {
-  //       userId: authUser._id,
-  //     },
-  //   });
-  //   socket.connect();
+    const socket = io(BASE_URL, {
+      query: {
+        userId: authUser._id,
+      },
+    });
+    socket.connect();
 
-  //   set({ socket: socket });
+    set({ socket: socket });
 
-  //   socket.on("getOnlineUsers", (userIds) => {
-  //     set({ onlineUsers: userIds });
-  //   });
-  // },
-  // disconnectSocket: () => {
-  //   if (get().socket?.connected) get().socket.disconnect();
-  // },
+    //socket.on calls io.emit of backend
+    socket.on("getOnlineUsers", (userIds) => {
+      set({ onlineUsers: userIds });
+    });
+  },
+
+  disconnectSocket: () => {
+    if (get().socket?.connected) get().socket.disconnect();
+  },
 
   verifyEmail: async (otp) => {
     set({ isVerifyingEmail: true });

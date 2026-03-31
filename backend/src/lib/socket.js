@@ -28,7 +28,7 @@ io.on("connection" , (socket) => {
     //store userId in temporary map
     if(userId) userSocketMap[userId] = socket.id;
 
-    // it gives the array of online/connected users 
+    // sends the array of online/connected users to frontend
     io.emit("getOnlineUsers" , Object.keys(userSocketMap)); // Output: ["user_id_123", "user_id_456"]
 
     //disconnect
