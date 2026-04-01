@@ -13,6 +13,7 @@ import HomePage from './pages/HomePage';
 import Navbar from './components/Navbar';
 import EmailVerify from './pages/EmailVerify';
 import SettingsPage from './pages/SettingsPage';
+import ProfilePage from './pages/ProfilePage';
 
 const App = () => {
   const { authUser, checkAuth, isCheckingAuth, onlineUsers } = useAuthStore();
@@ -40,6 +41,7 @@ const App = () => {
         <Route path="/signup" element={!authUser ? <SignUpPage /> : (authUser.isVerified ? <Navigate to="/" /> : <Navigate to="/verify-email" />)} />
         <Route path="/login" element={!authUser ? <LoginPage /> : (authUser.isVerified ? <Navigate to="/" /> : <Navigate to="/verify-email" />)} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/profile" element={authUser ? <ProfilePage /> : <Navigate to="/login" />} />
         <Route path="/verify-email" element={authUser && !authUser.isVerified ? <EmailVerify /> : <Navigate to="/" />} />
       </Routes>
       
