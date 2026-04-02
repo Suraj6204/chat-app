@@ -11,11 +11,11 @@ import authRoutes from "./routes/auth.route.js";
 import messageRoutes from "./routes/message.route.js";
 import { connectRabbitMQ } from "./lib/rabbitmq.js";
 import { startEmailWorker } from "./lib/emailWorker.js";
-// import { app, server } from "./lib/socket.js";
+import { app, server } from "./lib/socket.js";
 
 dotenv.config();
 
-const app = express();
+// app is imported from socket.js
 
 const PORT = process.env.PORT;
 // const __dirname = path.resolve();
@@ -41,7 +41,7 @@ app.use("/api/messages", messageRoutes);
 //   });
 // }
 
-app.listen(PORT, async () => {
+server.listen(PORT, async () => {
   console.log("server is running on PORT:" + PORT);
   connectDB();
 
