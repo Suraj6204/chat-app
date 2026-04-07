@@ -30,31 +30,6 @@ const Navbar = () => {
     <div className="drawer z-50">
       <input id="my-drawer" type="checkbox" className="drawer-toggle" />
       
-      {/* Top Navbar Header - Always visible */}
-      <div className="drawer-content flex flex-col relative z-40">
-        <header className="bg-base-100 border-b border-base-300 fixed w-full top-0 left-0 transition-colors duration-300">
-          <div className="container mx-auto px-4 h-16">
-            <div className="flex items-center gap-4 h-full">
-              {/* Hamburger Menu Button */}
-              {authUser && (
-                <label htmlFor="my-drawer" className="btn btn-ghost btn-circle drawer-button">
-                  <Menu className="size-6" />
-                </label>
-              )}
-              
-              <Link to="/" className="flex items-center gap-2.5 hover:opacity-80 transition-all ml-2">
-                 <div className="size-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                   <MessageSquare className="w-5 h-5 text-primary" />
-                 </div>
-                 <h1 className="text-lg font-bold">Chatty</h1>
-              </Link>
-
-              {/* Keep a fallback for not logged in users on the right if needed, but currently simplified */}
-            </div>
-          </div>
-        </header>
-      </div> 
-
       {/* Side Drawer */}
       <div className="drawer-side z-[100]">
         <label htmlFor="my-drawer" aria-label="close sidebar" className="drawer-overlay"></label> 
