@@ -11,4 +11,7 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"), // 2. Alias setup karein
     },
   },
+  define: {
+    global: 'window',
+  },
 })

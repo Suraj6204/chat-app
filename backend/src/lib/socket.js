@@ -62,10 +62,10 @@ io.on("connection" , (socket) => {
     });
 
     //4.for ending call
-    socket.on("endCall", ({ to }) => {
+    socket.on("endCall", ({ to , endedBy}) => {
         const targetSocketId = getReceiverSocketId(to);
         if (targetSocketId) {
-            io.to(targetSocketId).emit("callEnded");
+            io.to(targetSocketId).emit("callEnded", {endedBy});
         }
     });
 

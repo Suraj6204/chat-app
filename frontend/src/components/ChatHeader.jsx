@@ -2,20 +2,21 @@ import { X, Phone, Video, ChevronDown } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useChatStore } from "../store/useChatStore";
 import toast from "react-hot-toast";
+import { useCallStore } from "../store/useCallStore";
 
 const ChatHeader = () => {
   const { selectedUser, setSelectedUser } = useChatStore();
   const { onlineUsers } = useAuthStore();
   const isOnline = onlineUsers.includes(selectedUser._id);
 
+  const { callUser } = useCallStore();
+  const { authUser } = useAuthStore();
   const handleCallInit = (type) => {
     if (!isOnline) {
       return toast.error(`${selectedUser.fullName} is offline.`);
     }
-    
-    // Agar online hai toh Phase 3 wala calling logic yahan aayega
     console.log(`Starting ${type} call with ${selectedUser.fullName}...`);
-    // callUser(selectedUser._id, type); 
+    callUser(selectedUser._id, type, authUser.fullName);
   };
 
   return (
