@@ -5,9 +5,10 @@ import toast from "react-hot-toast";
 import { useCallStore } from "../store/useCallStore";
 
 const ChatHeader = () => {
-  const { selectedUser, setSelectedUser } = useChatStore();
+  const { selectedUser, setSelectedUser, typingUsers } = useChatStore();
   const { onlineUsers } = useAuthStore();
   const isOnline = onlineUsers.includes(selectedUser._id);
+  const isTyping = typingUsers.includes(selectedUser._id);
 
   const { callUser } = useCallStore();
   const { authUser } = useAuthStore();
@@ -37,7 +38,7 @@ const ChatHeader = () => {
           <div>
             <h3 className="font-medium">{selectedUser.fullName}</h3>
             <p className="text-sm text-base-content/70">
-              {isOnline ? "Online" : "Offline"}
+              {isTyping ? "Typing..." : isOnline ? "Online" : "Offline"}
             </p>
           </div>
         </div>

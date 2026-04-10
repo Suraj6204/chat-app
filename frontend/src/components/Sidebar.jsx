@@ -5,7 +5,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import SidebarSkeleton from './skeletons/SidebarSkeleton';
 
 const Sidebar = () => {
-  const { getUsers, users, selectedUser, setSelectedUser, isUsersLoading } = useChatStore();
+  const { getUsers, users, selectedUser, setSelectedUser, isUsersLoading, typingUsers } = useChatStore();
 
   const { onlineUsers, authUser } = useAuthStore();
   const [showOnlineOnly, setShowOnlineOnly] = useState(false);
@@ -61,7 +61,7 @@ const Sidebar = () => {
             `}
           >
             <div className="relative mx-auto lg:mx-0">
-              <img
+               <img
                 src={user.profilePic || "/avatar.png"}
                 alt={user.name}
                 className="size-12 object-cover rounded-full"
@@ -78,8 +78,10 @@ const Sidebar = () => {
             <div className="hidden lg:block text-left min-w-0">
               <div className="font-medium truncate">{user.fullName}</div>
               <div className="text-sm text-zinc-400">
-                {onlineUsers.includes(user._id) ? "Online" : "Offline"}
-              </div>
+                {typingUsers?.includes(user._id) ? (
+                  <span className="text-emerald-500 font-medium">Typing...</span>
+                ) : onlineUsers.includes(user._id) ? "Online" : "Offline"}
+              </div> 
             </div>
           </button>
         ))}

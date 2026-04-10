@@ -9,6 +9,7 @@ export const useChatStore = create((set, get) => ({
     selectedUser: null,
     isUsersLoading: false,
     isMessagesLoading: false,
+    typingUsers: [], // stores array of user ids who are typing
 
     getUsers: async () => { //userId pass krne ka jrurt nhi hai , req.user se mil jata hai automatic                set({ isUsersLoading: true });
         try{
@@ -47,7 +48,7 @@ export const useChatStore = create((set, get) => ({
         }
     },
     
-    subscribeToMessages: () => {
+    subscribeToMessages: () => { //Receiveing 
         const { selectedUser } = get();
         if (!selectedUser) return;
 
@@ -61,15 +62,43 @@ export const useChatStore = create((set, get) => ({
             messages: [...get().messages, newMessage],
         });
         });
+
+        socket.on("displayTyping", ({ senderId }) => {
+            set((state) => ({
+                typingUsers: [...new Set([...state.typingUsers, senderId])]
+            }));
+        });
+
+        socket.on("hideTyping", ({ senderId }) => {
+            set((state) => ({
+                typingUsers: state.typingUsers.filter((id) => id !== senderId)
+            }));
+        });
     },
 
     unsubscribeFromMessages: () => {
         const socket = useAuthStore.getState().socket;
         socket.off("newMessage");
+        socket.off("displayTyping");
+        socket.off("hideTyping");
     },
 
     setSelectedUser: (selectedUser) => set({ selectedUser }),
 
+    // Ye tab chalta hai jab Aap (User A) type karte ho. Ye backend ko batata hai ki "Bhai, main likh raha hu, sāmne wale ko bata do.
+    sendStartTyping: () => { //sending 
+        const { selectedUser } = get();
+        const socket = useAuthStore.getState().socket;``
+        if (!socket || !selectedUser) return;
+        socket.emit("startTyping", { receiverId: selectedUser._id });
+    },
+
+    sendStopTyping: () => {
+        const { selectedUser } = get();
+        const socket = useAuthStore.getState().socket;
+        if (!socket || !selectedUser) return;
+        socket.emit("stopTyping", { receiverId: selectedUser._id });
+    },
 }));
 
 

@@ -69,6 +69,26 @@ io.on("connection" , (socket) => {
         }
     });
 
+//5.Typing feature
+    //start typing
+
+    //Jab User A connect hua, toh backend ne ek kamra banaya jahan userId = "UserA" save ho
+    //gaya. Us kamre ke saare socket.on events usi userId ko yaad rakhte hain.
+    socket.on("startTyping", ({ receiverId } ) => {
+        const receiverSocketId = getReceiverSocketId(receiverId);
+        io.to(receiverSocketId).emit("displayTyping" , {
+            senderId : userId //ye jo bheja hai uske according userId set hojayegi ,
+        });
+    });
+
+    //stop typing
+    socket.on("stopTyping" , ({receiverId}) => {
+        const receiverSocketId = getReceiverSocketId(receiverId);
+        io.to(receiverSocketId).emit("hideTyping" , {
+            senderId : userId
+        });
+    });
+
     //disconnect
     socket.on("disconnect" , () => {
         console.log("A user disconnected", socket.id);

@@ -6,8 +6,10 @@ import toast from "react-hot-toast";
 const MessageInput = () => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
+  const [isTyping, setIsTyping] = useState(false);
   const fileInputRef = useRef(null);
-  const { sendMessage } = useChatStore();
+  const typingTimeoutRef = useRef(null);
+  const { sendMessage, sendStartTyping, sendStopTyping } = useChatStore();
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -32,6 +34,10 @@ const MessageInput = () => {
     e.preventDefault();
     if (!text.trim() && !imagePreview) return;
 
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    sendStopTyping();
+    setIsTyping(false);
+
     try {
       await sendMessage({
         text: text.trim(),
@@ -45,6 +51,24 @@ const MessageInput = () => {
     } catch (error) {
       console.error("Failed to send message:", error);
     }
+  };
+
+  const handleInputChange = (e) => {
+    setText(e.target.value);
+
+    if (!isTyping) {
+        setIsTyping(true);
+        sendStartTyping();
+    }
+
+    if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+    }
+
+    typingTimeoutRef.current = setTimeout(() => {
+        sendStopTyping();
+        setIsTyping(false);
+    }, 2000);
   };
 
   return (
@@ -76,7 +100,7 @@ const MessageInput = () => {
             className="w-full input input-bordered rounded-lg input-sm sm:input-md"
             placeholder="Type a message..."
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={handleInputChange}
           />
           <input
             type="file"
