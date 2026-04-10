@@ -85,10 +85,10 @@ export const useChatStore = create((set, get) => ({
 
     setSelectedUser: (selectedUser) => set({ selectedUser }),
 
-    // Ye tab chalta hai jab Aap (User A) type karte ho. Ye backend ko batata hai ki "Bhai, main likh raha hu, sāmne wale ko bata do.
+    // 
     sendStartTyping: () => { //sending 
         const { selectedUser } = get();
-        const socket = useAuthStore.getState().socket;``
+        const socket = useAuthStore.getState().socket;
         if (!socket || !selectedUser) return;
         socket.emit("startTyping", { receiverId: selectedUser._id });
     },
