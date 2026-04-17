@@ -54,12 +54,12 @@ io.on("connection" , (socket) => {
     });
 
     // 3. ICE Candidates exchange (Connection pakka karne ke liye)
-    socket.on("iceCandidate", ({ to, candidate }) => {
-        const targetSocketId = getReceiverSocketId(to);
-        if (targetSocketId) {
-            io.to(targetSocketId).emit("iceCandidate", candidate);
-        }
-    });
+    // socket.on("iceCandidate", ({ to, candidate }) => {
+    //     const targetSocketId = getReceiverSocketId(to);
+    //     if (targetSocketId) {
+    //         io.to(targetSocketId).emit("iceCandidate", candidate);
+    //     }
+    // });
 
     //4.for ending call
     socket.on("endCall", ({ to , endedBy}) => {

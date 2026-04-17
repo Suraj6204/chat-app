@@ -7,6 +7,16 @@ import toast from "react-hot-toast";
 const ringtone = new Audio("/ringtone.mp3");
 ringtone.loop = true; // Taaki jab tak call pick na ho, ring bajti rahe
 
+const iceServersConfig = {
+  config: {
+    iceServers: [
+      { urls: "stun:stun.l.google.com:19302" },
+      { urls: "stun:stun1.l.google.com:19302" },
+      { urls: "stun:stun2.l.google.com:19302" },
+    ],
+  },
+};
+
 export const useCallStore = create((set, get) => ({
   call: {},            // Incoming call info {isReceivingCall, from, name, signal}
   callAccepted: false, 
@@ -44,7 +54,12 @@ export const useCallStore = create((set, get) => ({
     if (!socket) return toast.error("Socket not connected!");
     const authUser = useAuthStore.getState().authUser;
 
-    const peer = new Peer({ initiator: true, trickle: false, stream });
+    const peer = new Peer({ 
+      initiator: true, 
+      trickle: false, 
+      stream,
+      ...iceServersConfig 
+    });
 
     peer.on("signal", (data) => {
       socket.emit("callUser", {
@@ -63,10 +78,7 @@ export const useCallStore = create((set, get) => ({
 
     peer.on("stream", (remoteStream) => {
       set({ userStream: remoteStream });
-    });
-
-    // Handle end call
-    // socket.on("callEnded", () => get().leaveCall(true));
+    }); 
   },
 
   // 3. Call Receive/Answer Karna (Incoming)
@@ -78,7 +90,12 @@ export const useCallStore = create((set, get) => ({
     const stream = await get().getMediaStream(get().call.type);
     const socket = useAuthStore.getState().socket;
 
-    const peer = new Peer({ initiator: false, trickle: false, stream });
+    const peer = new Peer({ 
+      initiator: false, 
+      trickle: false, 
+      stream,
+      ...iceServersConfig 
+    });
 
     peer.on("signal", (data) => {
       socket.emit("answerCall", { signal: data, to: get().call.from });
