@@ -4,6 +4,9 @@ import { useAuthStore } from "./useAuthStore";
 import { useChatStore } from "./useChatStore";
 import toast from "react-hot-toast";
 
+const ringtone = new Audio("/ringtone.mp3");
+ringtone.loop = true; // Taaki jab tak call pick na ho, ring bajti rahe
+
 export const useCallStore = create((set, get) => ({
   call: {},            // Incoming call info {isReceivingCall, from, name, signal}
   callAccepted: false, 
@@ -12,17 +15,17 @@ export const useCallStore = create((set, get) => ({
   userStream: null,    // Remote person's stream
   callType: null,      // 'audio' or 'video'
 
-  // 1. Camera aur Mic ka access lena (With Super Debugging)
+  // 1. Camera aur Mic ka access lena 
   getMediaStream: async (type) => {
     try {
-      console.log("1. Requesting Camera/Mic permission..."); // Debug 1
+      console.log("1. Requesting Camera/Mic permission...");
       
       const currentStream = await navigator.mediaDevices.getUserMedia({
         video: type === "video",
         audio: true,
       });
       
-      console.log("2. Permission Granted! Stream:", currentStream); // Debug 2
+      console.log("2. Permission Granted! Stream:", currentStream); 
       set({ stream: currentStream, callType: type });
       return currentStream;
 
@@ -68,6 +71,9 @@ export const useCallStore = create((set, get) => ({
 
   // 3. Call Receive/Answer Karna (Incoming)
   answerCall: async () => {
+    ringtone.pause();
+    ringtone.currentTime = 0;
+
     set({ callAccepted: true });
     const stream = await get().getMediaStream(get().call.type);
     const socket = useAuthStore.getState().socket;
@@ -87,6 +93,8 @@ export const useCallStore = create((set, get) => ({
 
   // 4. Call Cut Karna
   leaveCall: (isRemote = false) => {
+    ringtone.pause();
+    ringtone.currentTime = 0;
     const { stream, userStream, call } = get(); 
     
     const socket = useAuthStore.getState().socket;
@@ -141,6 +149,7 @@ export const useCallStore = create((set, get) => ({
     // Naya listener
     socket.on("incomingCall", ({ from, name, signal, type }) => {
       console.log("Call incoming from:", name);
+      ringtone.play().catch(err => console.log("Audio play error:", err));
       set({ call: { isReceivingCall: true, from, name, signal, type } });
     });
 
@@ -149,7 +158,6 @@ export const useCallStore = create((set, get) => ({
       console.log(`🚨 Call was cut by: ${enderName}`);
       toast(`${enderName} ended the call`, { icon: '📞' });
       
-      // FIX 3: isRemote ko true pass karna bahut zaroori hai
       get().leaveCall(true); 
     });
   },
