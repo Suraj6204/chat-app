@@ -93,11 +93,18 @@ const ChatContainer = () => {
               </time>
             </div>
 
-            <div className="chat-bubble flex flex-col">
+            <div className={`chat-bubble flex flex-col ${message.senderId === authUser._id ? "chat-bubble-primary" : "bg-base-200 text-base-content"}`}>
               {message.image && (
                 <img
                   src={message.image}
                   alt="Attachment"
+                  className="sm:max-w-[200px] rounded-md mb-2"
+                />
+              )}
+              {message.video && (
+                <video
+                  src={message.video}
+                  controls
                   className="sm:max-w-[200px] rounded-md mb-2"
                 />
               )}

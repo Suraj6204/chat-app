@@ -1,28 +1,41 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useChatStore } from "../store/useChatStore";
-import { Image, Send, X } from "lucide-react";
+import { Image, Plus, Send, Smile, XCircle, FileText, Camera,Mic } from "lucide-react";
 import toast from "react-hot-toast";
 
 const MessageInput = () => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
+  const [menuOptions, setMenuOptions] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const fileInputRef = useRef(null);
+  const menuRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const { sendMessage, sendStartTyping, sendStopTyping } = useChatStore();
 
-  const handleImageChange = (e) => {
+  const handleImageVideoChange = (e) => {
     const file = e.target.files[0];
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please select an image file");
+    if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
+      toast.error("Please select an image or video file");
       return;
     }
 
+    //1.size check 
+    if (file.size > 20 * 1024 * 1024) { // 20MB limit
+      return toast.error("File size is too large! Max 20MB allowed.");
+    }
+
     const reader = new FileReader();
-    reader.onloadend = () => {
-      setImagePreview(reader.result);
-    };
     reader.readAsDataURL(file);
+    
+    reader.onloadend = () => {
+      const base64Data = reader.result;
+      if (file.type.startsWith("image/")) {
+        setImagePreview(base64Data);
+      } else if (file.type.startsWith("video/")) {
+        setImagePreview(base64Data);
+      }
+    };
   };
 
   const removeImage = () => {
@@ -39,9 +52,11 @@ const MessageInput = () => {
     setIsTyping(false);
 
     try {
+      const isVideo = imagePreview && imagePreview.startsWith("data:video/");
       await sendMessage({
         text: text.trim(),
-        image: imagePreview,
+        image: isVideo ? null : imagePreview,
+        video: isVideo ? imagePreview : null,
       });
 
       // Clear form
@@ -71,63 +86,142 @@ const MessageInput = () => {
     }, 2000);
   };
 
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if(menuRef.current && !menuRef.current.contains(e.target)){
+        setMenuOptions(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   return (
-    <div className="p-4 w-full">
+    <div className="p-4 w-full bg-base-100 relative">
+      {/* Image Preview Section */}
       {imagePreview && (
         <div className="mb-3 flex items-center gap-2">
           <div className="relative">
-            <img
-              src={imagePreview}
-              alt="Preview"
-              className="w-20 h-20 object-cover rounded-lg border border-zinc-700"
-            />
+            {imagePreview.startsWith("data:video/") ? (
+              <video
+                src={imagePreview}
+                className="w-20 h-20 object-cover rounded-lg border border-zinc-700"
+                controls
+              />
+            ) : (
+              <img
+                src={imagePreview}
+                alt="Preview"
+                className="w-20 h-20 object-cover rounded-lg border border-zinc-700"
+              />
+            )}
             <button
               onClick={removeImage}
               className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-base-300
-              flex items-center justify-center"
+              flex items-center justify-center shadow-md hover:bg-base-400 transition-colors"
               type="button"
             >
-              <X className="size-3" />
+              <XCircle className="size-3" />
             </button>
           </div>
         </div>
       )}
 
+      {menuOptions && (
+          <div ref={menuRef} className="absolute bottom-full left-4 mb-2 w-56 bg-base-200 border border-base-300 rounded-2xl shadow-2xl py-2 z-50">
+            <button
+              type="button"
+              className="w-full cursor-pointer flex items-center gap-4 px-4 py-3 hover:bg-base-300 transition-colors"
+              onClick={() => {
+                fileInputRef.current?.click() ; 
+                setMenuOptions(false);
+              }}
+            >
+              <FileText size={22} className="text-indigo-400" />
+              <span className="text-base-content font-medium text-sm text-left flex-1">Document</span>
+            </button>
+
+            <button
+              type="button"
+              className="w-full cursor-pointer flex items-center gap-4 px-4 py-3 hover:bg-base-300 transition-colors"
+              onClick={() => {
+                fileInputRef.current?.click() ; 
+                setMenuOptions(false);
+              }}
+            >
+              <Image size={22} className="text-blue-400" />
+              <span className="text-base-content font-medium text-sm text-left flex-1">Photos & videos</span>
+            </button>
+        </div>
+      )}
+
       <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-        <div className="flex-1 flex gap-2">
+        {/* Main Input Wrapper */}
+        <div className="relative flex-1 flex items-center">
+          
+          {/* Plus Icon (Left Side) */}
+          <button
+            type="button"
+            className="absolute z-10 left-4 text-base-content/70 hover:bg-base-content/10 rounded-full p-2 cursor-pointer"
+            onClick={() => setMenuOptions(!menuOptions)}
+          >
+            <Plus size={22} />
+          </button>
+
+          {/* Input Field - pill shape */}
           <input
             type="text"
-            className="w-full input input-bordered rounded-lg input-sm sm:input-md"
+            className="w-full bg-base-200 text-base-content input input-bordered rounded-full pl-15 pr-24 py-6 text-base sm:font-medium focus:outline-none border-none shadow-inner"
             placeholder="Type a message..."
             value={text}
             onChange={handleInputChange}
           />
+
+          {/* Right Side Icons (Inside Input) */}
+          <div className="absolute right-4 flex items-center gap-4 text-base-content/50">
+            <button type="button" className="hover:text-primary">
+              <Smile size={22} />
+            </button>
+            
+            {/* Camera Icon to trigger file upload */}
+            <button 
+              type="button" 
+              className={`hover:text-primary ${imagePreview ? "text-emerald-500" : ""}`}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Camera size={22} />
+            </button>
+          </div>
+
+          {/* Hidden File Input (Images and videos) */}
           <input
             type="file"
-            accept="image/*"
+            accept="image/*,video/*"
             className="hidden"
             ref={fileInputRef}
-            onChange={handleImageChange}
+            onChange={handleImageVideoChange}
           />
-
-          <button
-            type="button"
-            className={`hidden sm:flex btn btn-circle
-                     ${imagePreview ? "text-emerald-500" : "text-zinc-400"}`}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <Image size={20} />
-          </button>
         </div>
+
+        {/* Send or Mic Button (Outside) */}
         <button
           type="submit"
-          className="btn btn-sm btn-circle"
+          className="btn btn-circle bg-primary hover:bg-primary/90 border-none text-white shadow-lg"
           disabled={!text.trim() && !imagePreview}
         >
-          <Send size={22} />
+          {/* Logic: Agar kuch likha hai ya image hai toh Send, warna Mic */}
+          {text.trim() || imagePreview ? (
+            <Send size={20} />
+          ) : (
+            <Mic size={20} />
+          )}
         </button>
       </form>
     </div>
   );
 };
+
 export default MessageInput;

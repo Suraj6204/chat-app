@@ -39,20 +39,34 @@ export const getMessages = async (req, res) => {
 
 export const sendMessage = async (req , res) => { // :/receiverId
     try{
-        const {text , image} = req.body;
+        const {text , image , video} = req.body;
         const senderId = req.user._id;
         const {id : receiverId} = req.params;
 
         let imageUrl;
         if(image){
-            const uploadResponse = await cloudinary.uploader.upload(image);
+            const uploadResponse = await cloudinary.uploader.upload(image , {
+                resource_type : "image",
+            });
             imageUrl = uploadResponse.secure_url;
         }
+
+        let videoUrl = ""
+        if(video){
+            const uploadResponse = await cloudinary.uploader.upload(video , {
+                resource_type : "video",
+                chunk_size: 6000000, // 6MB chunks (badi files ke liye helpful hai)
+                folder: "chat_videos"
+            });
+            videoUrl = uploadResponse.secure_url;
+        }
+        
         const newMessage = new Message({
             senderId,
             receiverId,
             text,
             image: imageUrl,
+            video: videoUrl,
         })
         await newMessage.save();
 
