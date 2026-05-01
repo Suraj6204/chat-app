@@ -2,6 +2,7 @@ import { useRef, useState, useEffect } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { Image, Plus, Send, Smile, XCircle, FileText, Camera,Mic } from "lucide-react";
 import toast from "react-hot-toast";
+import MenuOptions from "./MenuOptions";
 
 const MessageInput = () => {
   const [text, setText] = useState("");
@@ -72,19 +73,24 @@ const MessageInput = () => {
     setText(e.target.value);
 
     if (!isTyping) {
-        setIsTyping(true);
-        sendStartTyping();
+      setIsTyping(true);
+      sendStartTyping();
     }
 
     if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
+      clearTimeout(typingTimeoutRef.current);
     }
 
     typingTimeoutRef.current = setTimeout(() => {
-        sendStopTyping();
-        setIsTyping(false);
+      sendStopTyping();
+      setIsTyping(false);
     }, 2000);
   };
+
+  const handleFileInput = () => {
+    fileInputRef.current?.click() ; 
+    setMenuOptions(false);
+  }
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -132,29 +138,10 @@ const MessageInput = () => {
 
       {menuOptions && (
           <div ref={menuRef} className="absolute bottom-full left-4 mb-2 w-56 bg-base-200 border border-base-300 rounded-2xl shadow-2xl py-2 z-50">
-            <button
-              type="button"
-              className="w-full cursor-pointer flex items-center gap-4 px-4 py-3 hover:bg-base-300 transition-colors"
-              onClick={() => {
-                fileInputRef.current?.click() ; 
-                setMenuOptions(false);
-              }}
-            >
-              <FileText size={22} className="text-indigo-400" />
-              <span className="text-base-content font-medium text-sm text-left flex-1">Document</span>
-            </button>
+            
+            <MenuOptions icon={FileText} label="Document" onClick={handleFileInput} iconColour="text-indigo-400" />
 
-            <button
-              type="button"
-              className="w-full cursor-pointer flex items-center gap-4 px-4 py-3 hover:bg-base-300 transition-colors"
-              onClick={() => {
-                fileInputRef.current?.click() ; 
-                setMenuOptions(false);
-              }}
-            >
-              <Image size={22} className="text-blue-400" />
-              <span className="text-base-content font-medium text-sm text-left flex-1">Photos & videos</span>
-            </button>
+            <MenuOptions icon={Image} label="Photo & Video" onClick={handleFileInput} iconColour="text-blue-400" />
         </div>
       )}
 
