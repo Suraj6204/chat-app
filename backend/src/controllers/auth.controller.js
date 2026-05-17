@@ -145,8 +145,8 @@ export const sendOTP = async (req, res) => {
         await sendEmail(email,"Chatty - OTP Verification Code", otpHtml);
 
         return res.status(200).json({
-            message: "OTP sent to your email",
-            success: true
+          message: "OTP sent to your email",
+          success: true
         });
     } catch (error) {
         console.log(error);

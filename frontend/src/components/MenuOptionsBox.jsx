@@ -1,5 +1,5 @@
 
-const MenuOptions = ({icon:Icon , label , onClick , iconColour ="", className = ""}) => {
+const MenuOptionsBox = ({icon:Icon , label , onClick , iconColour ="", className = ""}) => {
   return (
     <button 
         type="button"
@@ -15,4 +15,4 @@ const MenuOptions = ({icon:Icon , label , onClick , iconColour ="", className = 
   )
 }
 
-export default MenuOptions
+export default MenuOptionsBox

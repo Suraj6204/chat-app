@@ -1,14 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowDown, Copy, Info, Reply, Trash } from 'lucide-react';
-import ChatHeader from './ChatHeader'
+import { ArrowDown, Copy, Forward, Info, Reply, Trash, X } from 'lucide-react';
+import ChatHeader from './ChatHeader';
 import { useAuthStore } from '../store/useAuthStore';
 import { useChatStore } from '../store/useChatStore';
 import { formatMessageTime } from '../lib/utils';
 import MessageInput from './MessageInput';
 import MessageSkeleton from './skeletons/MessageSkeleton';
-import MenuOptions from './MenuOptions';
+import MenuOptionsBox from './MenuOptionsBox';
+import SelectionActionBar from './SelectionActionBar';
+
 const ChatContainer = () => {
-    const {
+  const {
     messages,
     getMessages,
     isMessagesLoading,
@@ -16,47 +18,90 @@ const ChatContainer = () => {
     subscribeToMessages,
     unsubscribeFromMessages,
     typingUsers,
+    openModal,
   } = useChatStore();
+
   const { authUser } = useAuthStore();
   const messageEndRef = useRef(null);
   const scrollContainerRef = useRef(null);
-  const [isScrolledUp, setIsScrolledUp] = useState(false);
-  const [menuOptions, setMenuOptions] = useState({ show:false ,x: 0, y: 0 , messageId:null });
 
+  const [isScrolledUp, setIsScrolledUp] = useState(false);
+  const [menuOptions, setMenuOptions] = useState({ show: false, x: 0, y: 0, messageId: null });
+
+  // Selection Mode States
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedMessageIds, setSelectedMessageIds] = useState([]);
+  const [actionMode, setActionMode] = useState(null);
+ 
 
   const handleScroll = () => {
     if (scrollContainerRef.current) {
       const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
-      // If distance from bottom is greater than 100px, it means the user scrolled up
       setIsScrolledUp(scrollHeight - scrollTop - clientHeight > 100);
     }
   };
-  
+
   const scrollToBottom = () => {
     if (messageEndRef.current) {
       messageEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   };
 
-  const handleMenuOptions = (e,messageId) => {
-    e.preventDefault(); 
+  const handleMenuOptions = (e, messageId) => {
+    if (isSelectionMode) return; // Selection mode active hone par overlay context menu block hoga
+    e.preventDefault();
     e.stopPropagation();
     setMenuOptions({
       show: true,
       x: e.clientX,
       y: e.clientY,
       messageId
-    })
+    });
+  };
+
+  // Checkbox select/deselect handling
+  const handleToggleSelect = (messageId) => {
+    setSelectedMessageIds((prev) =>
+      prev.includes(messageId)
+        ? prev.filter((id) => id !== messageId)
+        : [...prev, messageId]
+    );
+  };
+
+  // Bulk Delete Action Handler
+  const handleDeleteSelected = async () => {
+    if (selectedMessageIds.length === 0) return;
+    openModal('Delete', selectedMessageIds);
+    cancelSelectionMode();
+  };
+
+  //TODO : forward messages to other chats.
+  const handleForwardSelected = () => {
+    if (selectedMessageIds.length === 0) return;
+    openModal('Forward', selectedMessageIds);
+    cancelSelectionMode();
   }
-  
-  //for closing contextMenu option by clicking from outside anywhere
-  useEffect(()=>{
+
+  const cancelSelectionMode = () => {
+    setIsSelectionMode(false);
+    setSelectedMessageIds([]);
+  };
+
+  //selectionbar ke icon ko click krne pe kon sa function chlega
+  const actionMap = {
+    Delete: handleDeleteSelected,
+    Forward: handleForwardSelected,
+    // star: handleStarSelected,     // Future feature
+    // report: handleReportSelected  // Future feature
+  }; 
+
+  useEffect(() => {
     const handleClickOnOutside = () => {
-      setMenuOptions({...menuOptions , show : false});
-    }
-    window.addEventListener('click' , handleClickOnOutside);
-    return () => window.removeEventListener('click' , handleClickOnOutside);
-  },[menuOptions]);
+      setMenuOptions(prev => ({ ...prev, show: false }));
+    };
+    window.addEventListener('click', handleClickOnOutside);
+    return () => window.removeEventListener('click', handleClickOnOutside);
+  }, []);
 
   useEffect(() => {
     getMessages(selectedUser._id);
@@ -82,59 +127,80 @@ const ChatContainer = () => {
       </div>
     );
   }
+
   return (
-    <div className="flex-1 flex flex-col overflow-auto relative">
-        <ChatHeader />
-       <div 
-         className="flex-1 overflow-y-auto p-4 space-y-4 relative" 
-         ref={scrollContainerRef} 
-         onScroll={handleScroll}
-       >
+    <div className="flex-1 flex flex-col overflow-auto relative bg-base-100">
+      <ChatHeader />
+
+      <div
+        className="flex-1 overflow-y-auto p-4 space-y-4 relative"
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+      >
         {messages.map((message) => (
           <div
             key={message._id}
-            className={`chat ${message.senderId === authUser._id ? "chat-end" : "chat-start"}`}
+            className={`flex items-center relative group w-full transition-colors duration-150 ${isSelectionMode ? 
+              selectedMessageIds.includes(message._id) ? 
+                'bg-base-200 cursor-pointer' : 'hover:bg-base-200 cursor-pointer' 
+              : ''
+            }`}
+            onClick={() => isSelectionMode && handleToggleSelect(message._id)}
           >
-            <div className="chat-image avatar">
-              <div className="size-10 rounded-full border">
-                <img
-                  src={
-                    message.senderId === authUser._id
-                      ? authUser.profilePic || "/avatar.png"
-                      : selectedUser.profilePic || "/avatar.png"
-                  }
-                  alt="profile pic"
+            {/* Left Multi-select Checkbox Element */}
+            {isSelectionMode && (
+              <div className="flex items-center justify-center px-2">
+                <input
+                  type="checkbox"
+                  checked={selectedMessageIds.includes(message._id)}
+                  onChange={() => handleToggleSelect(message._id)}
+                  className="checkbox checkbox-sm checkbox-primary border-2 border-base-content/30 rounded-md transition-all"
+                  onClick={(e) => e.stopPropagation()} // prevent line bubble action conflict
                 />
               </div>
-            </div>
+            )}
 
-            <div className="chat-header mb-1">
-              <time className="text-xs opacity-50 ml-1">
-                {formatMessageTime(message.createdAt)}
-              </time>
-            </div>
+            {/* Standard DaisyUI Message Layout */}
+            <div className={`chat flex-1 ${message.senderId === authUser._id ? "chat-end" : "chat-start"}`}>
+              <div className="chat-image avatar">
+                <div className="size-10 rounded-full border">
+                  <img
+                    src={
+                      message.senderId === authUser._id
+                        ? authUser.profilePic || "/avatar.png"
+                        : selectedUser.profilePic || "/avatar.png"
+                    }
+                    alt="profile pic"
+                  />
+                </div>
+              </div>
 
-            <div onContextMenu={(e) => handleMenuOptions(e,message._id)} onDoubleClick={(e) => handleMenuOptions(e,message._id)} className={`chat-bubble flex flex-col ${message.senderId === authUser._id ? "chat-bubble-primary" : "bg-base-200 text-base-content"}`}>
-              {message.image && (
-                <img
-                  src={message.image}
-                  alt="Attachment"
-                  className="sm:max-w-[200px] rounded-md mb-2"
-                />
-              )}
-              {message.video && (
-                <video
-                  src={message.video}
-                  controls
-                  className="sm:max-w-[200px] rounded-md mb-2"
-                />
-              )}
-              {message.text && <p>{message.text}</p>}
-            </div>
+              <div className="chat-header mb-1">
+                <time className="text-xs opacity-50 ml-1">
+                  {formatMessageTime(message.createdAt)}
+                </time>
+              </div>
 
+              <div
+                onContextMenu={(e) => handleMenuOptions(e, message._id)}
+                onDoubleClick={(e) => handleMenuOptions(e, message._id)}
+                className={`chat-bubble flex flex-col cursor-pointer ${message.senderId === authUser._id ? "chat-bubble-primary" : "bg-base-200 text-base-content"
+                  }`}
+              >
+                {message.image && (
+                  <img src={message.image} alt="Attachment" className="sm:max-w-[200px] rounded-md mb-2" />
+                )}
+                {message.video && (
+                  <video src={message.video} controls className="sm:max-w-[200px] rounded-md mb-2" />
+                )}
+                {message.text && <p>{message.text}</p>}
+              </div>
+            </div>
           </div>
         ))}
 
+
+        {/* Right Click Popup Box Options Menu */}
         {menuOptions.show && (
           <div
             className="fixed mb-2 w-56 bg-base-200 border border-base-300 rounded-2xl shadow-2xl py-2 z-50"
@@ -145,28 +211,51 @@ const ChatContainer = () => {
                 ${menuOptions.x + 224 > window.innerWidth ? 'translateX(-100%)' : 'translateX(0)'} 
                 ${menuOptions.y + 300 > window.innerHeight ? 'translateY(-100%)' : 'translateY(0)'}
               `,
-            }} 
+            }}
           >
-            <MenuOptions icon={Info} label="Message info" iconColour="text-indigo-400" />
-            <MenuOptions icon={Reply} label="Reply" />
-            <MenuOptions icon={Copy} label="Copy" onClick={() => {
+            <MenuOptionsBox icon={Reply} label="Reply" />
+
+            <MenuOptionsBox 
+              icon={Forward} 
+              label="Forward" 
+              onClick={() => {
+                setIsSelectionMode(true);
+                setActionMode('Forward');
+                setSelectedMessageIds([menuOptions.messageId]);
+                setMenuOptions(prev => ({ ...prev, show: false }));
+              }}/>
+
+            <MenuOptionsBox
+              icon={Copy}
+              label="Copy"
+              onClick={() => {
                 const msg = messages.find(m => m._id === menuOptions.messageId);
-                if(msg?.text) navigator.clipboard.writeText(msg.text);
-            }} />
-            <hr className="border-zinc-800 my-1" />
-            <MenuOptions icon={Trash} label="Delete" className="text-error" />                                
+                if (msg?.text) navigator.clipboard.writeText(msg.text);
+                setMenuOptions(prev => ({ ...prev, show: false }));
+              }}
+            />
+            <hr className="border-base-300 my-1" />
+
+            <MenuOptionsBox
+              icon={Trash}
+              label="Delete"
+              className="text-error hover:bg-error/10 "
+              onClick={() => {
+                setIsSelectionMode(true);
+                setActionMode('Delete');
+                setSelectedMessageIds([menuOptions.messageId]);
+                setMenuOptions(prev => ({ ...prev, show: false }));
+              }}
+            />
           </div>
         )}
 
-        {/* typing skeleton */}
+        {/* Dynamic Typing indicators */}
         {typingUsers?.includes(selectedUser._id) && (
           <div className="chat chat-start">
             <div className="chat-image avatar">
               <div className="size-10 rounded-full border">
-                <img
-                  src={selectedUser.profilePic || "/avatar.png"}
-                  alt="profile pic"
-                />
+                <img src={selectedUser.profilePic || "/avatar.png"} alt="profile pic" />
               </div>
             </div>
             <div className="chat-bubble flex items-center justify-center gap-1 w-16 h-10 mt-1 bg-base-200">
@@ -177,23 +266,32 @@ const ChatContainer = () => {
           </div>
         )}
 
-        {/*Automatic scroll to bottom when open chat*/}
         <div ref={messageEndRef}></div>
-       </div>
+      </div>
 
-       {/* Floating Scroll Down Button */}
-       {isScrolledUp && (
-         <button
-           onClick={scrollToBottom}
-           className="absolute bottom-20 left-1/2 -translate-x-1/2 btn btn-circle btn-sm bg-base-200 border border-base-300 shadow-xl opacity-90 hover:opacity-100 z-10 animate-bounce"
-         >
-           <ArrowDown size={18} />
-         </button>
-       )}
+      {/* Floating swipe down button */}
+      {isScrolledUp && (
+        <button
+          onClick={scrollToBottom}
+          className="absolute bottom-20 left-1/2 -translate-x-1/2 btn btn-circle btn-sm bg-base-200 border border-base-300 shadow-xl opacity-90 hover:opacity-100 z-10 animate-bounce"
+        >
+          <ArrowDown size={18} />
+        </button>
+      )}
 
+      {/* Bottom Swap Bar: Input or Multi-Delete Controls */}
+      {isSelectionMode ? (
+        <SelectionActionBar
+          selectedCount={selectedMessageIds.length}
+          onCancel={cancelSelectionMode}
+          onExecuteAction={actionMap[actionMode]}
+          actionType={actionMode}
+        />
+      ) : (
         <MessageInput />
+      )}
     </div>
-  )
-}
+  );
+};
 
-export default ChatContainer
+export default ChatContainer;

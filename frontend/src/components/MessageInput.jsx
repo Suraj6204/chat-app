@@ -1,8 +1,8 @@
 import { useRef, useState, useEffect } from "react";
 import { useChatStore } from "../store/useChatStore";
-import { Image, Plus, Send, Smile, XCircle, FileText, Camera,Mic } from "lucide-react";
+import { Image, Plus, Send, Smile, XCircle, FileText, Camera, Mic } from "lucide-react";
 import toast from "react-hot-toast";
-import MenuOptions from "./MenuOptions";
+import MenuOptions from "./MenuOptionsBox";
 
 const MessageInput = () => {
   const [text, setText] = useState("");
@@ -28,7 +28,7 @@ const MessageInput = () => {
 
     const reader = new FileReader();
     reader.readAsDataURL(file);
-    
+
     reader.onloadend = () => {
       const base64Data = reader.result;
       if (file.type.startsWith("image/")) {
@@ -88,13 +88,13 @@ const MessageInput = () => {
   };
 
   const handleFileInput = () => {
-    fileInputRef.current?.click() ; 
+    fileInputRef.current?.click();
     setMenuOptions(false);
   }
 
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if(menuRef.current && !menuRef.current.contains(e.target)){
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
         setMenuOptions(false);
       }
     };
@@ -137,18 +137,18 @@ const MessageInput = () => {
       )}
 
       {menuOptions && (
-          <div ref={menuRef} className="absolute bottom-full left-4 mb-2 w-56 bg-base-200 border border-base-300 rounded-2xl shadow-2xl py-2 z-50">
-            
-            <MenuOptions icon={FileText} label="Document" onClick={handleFileInput} iconColour="text-indigo-400" />
+        <div ref={menuRef} className="absolute bottom-full left-4 mb-2 w-56 bg-base-200 border border-base-300 rounded-2xl shadow-2xl py-2 z-50">
 
-            <MenuOptions icon={Image} label="Photo & Video" onClick={handleFileInput} iconColour="text-blue-400" />
+          <MenuOptions icon={FileText} label="Document" onClick={handleFileInput} iconColour="text-indigo-400" />
+
+          <MenuOptions icon={Image} label="Photo & Video" onClick={handleFileInput} iconColour="text-blue-400" />
         </div>
       )}
 
       <form onSubmit={handleSendMessage} className="flex items-center gap-2">
         {/* Main Input Wrapper */}
         <div className="relative flex-1 flex items-center">
-          
+
           {/* Plus Icon (Left Side) */}
           <button
             type="button"
@@ -172,10 +172,10 @@ const MessageInput = () => {
             <button type="button" className="hover:text-primary">
               <Smile size={22} />
             </button>
-            
+
             {/* Camera Icon to trigger file upload */}
-            <button 
-              type="button" 
+            <button
+              type="button"
               className={`hover:text-primary ${imagePreview ? "text-emerald-500" : ""}`}
               onClick={() => fileInputRef.current?.click()}
             >

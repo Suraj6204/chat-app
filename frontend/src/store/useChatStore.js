@@ -11,6 +11,11 @@ export const useChatStore = create((set, get) => ({
     isMessagesLoading: false,
     typingUsers: [], // stores array of user ids who are typing
 
+    //  Modal Logic (Multi-Select) - Delete / Forward
+    isModalOpen: false,
+    modalType: null,        // 'Delete' ya 'Forward'
+    modalMessageIds: [],
+
     getUsers: async () => { //userId pass krne ka jrurt nhi hai , req.user se mil jata hai automatic                set({ isUsersLoading: true });
         try{
             const res = await axiosInstance.get("/messages/users");
@@ -48,44 +53,9 @@ export const useChatStore = create((set, get) => ({
         }
     },
     
-    subscribeToMessages: () => { //Receiveing 
-        const { selectedUser } = get();
-        if (!selectedUser) return;
-
-        const socket = useAuthStore.getState().socket;
-
-        socket.on("newMessage", (newMessage) => {
-        const isMessageSentFromSelectedUser = newMessage.senderId === selectedUser._id;
-        if (!isMessageSentFromSelectedUser) return;
-
-        set({
-            messages: [...get().messages, newMessage],
-        });
-        });
-
-        socket.on("displayTyping", ({ senderId }) => {
-            set((state) => ({
-                typingUsers: [...new Set([...state.typingUsers, senderId])]
-            }));
-        });
-
-        socket.on("hideTyping", ({ senderId }) => {
-            set((state) => ({
-                typingUsers: state.typingUsers.filter((id) => id !== senderId)
-            }));
-        });
-    },
-
-    unsubscribeFromMessages: () => {
-        const socket = useAuthStore.getState().socket;
-        socket.off("newMessage");
-        socket.off("displayTyping");
-        socket.off("hideTyping");
-    },
-
+    
     setSelectedUser: (selectedUser) => set({ selectedUser }),
 
-    // 
     sendStartTyping: () => { //sending 
         const { selectedUser } = get();
         const socket = useAuthStore.getState().socket;
@@ -99,6 +69,116 @@ export const useChatStore = create((set, get) => ({
         if (!socket || !selectedUser) return;
         socket.emit("stopTyping", { receiverId: selectedUser._id });
     },
+
+    //chatslice
+    openModal: (type, ids) => set({ 
+        isModalOpen: true, 
+        modalType: type, 
+        modalMessageIds: ids 
+    }),
+    
+    closeModal: () => set({ 
+        isModalOpen: false, 
+        modalType: null, 
+        modalMessageIds: [] 
+    }),
+    
+    // deleteMessages: async (messageIds) => {
+        //     try {
+            //         await axiosInstance.post("/messages/delete", { messageIds });
+            
+    //         // Frontend state se bhi un messages ko turant hata do
+    //         const currentMessages = get().messages;
+    //         set({ 
+    //             messages: currentMessages.filter(msg => !messageIds.includes(msg._id)) 
+    //         });
+            
+    //         toast.success("Messages deleted successfully");
+    //     } catch (error) {
+        //         toast.error(error.response?.data?.message || "Failed to delete messages");
+        //         throw error;
+        //     }
+        // },
+        
+    deleteMessages: async (messageIds, deleteType) => {
+        const { selectedUser, messages } = get();
+        try {
+            await axiosInstance.post("/messages/delete", {
+                messageIds,
+                deleteType, // 'me' or 'everyone' or 'forward'
+                receiverId: selectedUser._id
+            });
+
+            // UI se un messages ko filter out kar do instant response ke liye
+            const remainingMessages = messages.filter(msg => !messageIds.includes(msg._id));
+            set({ messages: remainingMessages });
+            
+            toast.success(`Deleted for ${deleteType === 'me' ? 'you' : 'everyone'}`);
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Failed to delete");
+        }
+    },
+
+    executeDelete: async (deleteType) => {
+        const { modalMessageIds, deleteMessages, closeModal } = get();
+        if (modalMessageIds.length === 0) return;
+        try {
+            await deleteMessages(modalMessageIds , deleteType ); 
+            closeModal(); 
+        } catch (error) {
+            console.error("Failed to delete messages via store execution:", error);
+        }
+    },
+    
+    executeForward: async () => {
+        const { modalMessageIds, closeModal } = get();
+        console.log("Messages forwarded successfully with IDs:", modalMessageIds);
+        // Kal ko yahan par forward ki real API integrate kar lena
+        closeModal();
+    },
+
+    subscribeToMessages: () => { //Receiveing 
+        const { selectedUser } = get();
+        if (!selectedUser) return;
+    
+        const socket = useAuthStore.getState().socket;
+    
+        socket.on("newMessage", (newMessage) => {
+        const isMessageSentFromSelectedUser = newMessage.senderId === selectedUser._id;
+        if (!isMessageSentFromSelectedUser) return;
+    
+        set({
+            messages: [...get().messages, newMessage],
+        });
+        });
+    
+        socket.on("displayTyping", ({ senderId }) => {
+            set((state) => ({
+                typingUsers: [...new Set([...state.typingUsers, senderId])]
+            }));
+        });
+    
+        socket.on("hideTyping", ({ senderId }) => {
+            set((state) => ({
+                typingUsers: state.typingUsers.filter((id) => id !== senderId)
+            }));
+        });
+
+        socket.on("messagesDeletedEveryone", (deletedMessageIds) => {
+            set({
+                messages: get().messages.filter(msg => !deletedMessageIds.includes(msg._id))
+            });
+        });
+    },
+    
+    unsubscribeFromMessages: () => {
+        const socket = useAuthStore.getState().socket;
+        socket.off("newMessage");
+        socket.off("displayTyping");
+        socket.off("hideTyping");
+        socket.off("messagesDeletedEveryone");
+    },
+    
 }));
 
 
