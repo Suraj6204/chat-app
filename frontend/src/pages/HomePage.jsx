@@ -11,6 +11,7 @@ import OutgoingCallContainer from '../components/OutgoingCallContainer';
 import { useCallStore } from "../store/useCallStore";
 import { useAuthStore } from '../store/useAuthStore';
 import ConfirmationModal from '../components/ConfirmationModal';
+import ForwardModal from '../components/ForwardModal';
 
 const HomePage = () => {
   const { selectedUser, isModalOpen, modalType, closeModal, executeDelete, executeForward } = useChatStore();
@@ -50,6 +51,8 @@ const HomePage = () => {
         showDeleteEveryone={modalType === 'Delete'}
         onConfirmEveryone={() => executeDelete('everyone')}
       />
+
+      <ForwardModal />
     </div>
   )
 }

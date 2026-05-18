@@ -47,15 +47,15 @@ const ChatContainer = () => {
     }
   };
 
-  const handleMenuOptions = (e, messageId) => {
-    if (isSelectionMode) return; // Selection mode active hone par overlay context menu block hoga
+  const handleMenuOptions = (e, message) => {
+    if (isSelectionMode || message.isDeletedEveryone) return; // Selection mode active hone par overlay context menu block hoga
     e.preventDefault();
     e.stopPropagation();
     setMenuOptions({
       show: true,
       x: e.clientX,
       y: e.clientY,
-      messageId
+      messageId: message._id,
     });
   };
 
@@ -142,13 +142,16 @@ const ChatContainer = () => {
             key={message._id}
             className={`flex items-center relative group w-full transition-colors duration-150 ${isSelectionMode ?
               selectedMessageIds.includes(message._id) ?
-                'bg-base-200 cursor-pointer' : 'hover:bg-base-200 cursor-pointer'
+                message.isDeletedEveryone ? 
+                'bg-base-300/70' :
+                'bg-base-200 cursor-pointer' 
+              : 'hover:bg-base-200 cursor-pointer'
               : ''
               }`}
-            onClick={() => isSelectionMode && handleToggleSelect(message._id)}
+            onClick={() => isSelectionMode && !message.isDeletedEveryone && handleToggleSelect(message._id)}
           >
             {/* Left Multi-select Checkbox Element */}
-            {isSelectionMode && (
+            {isSelectionMode && !message.isDeletedEveryone &&(
               <div className="flex items-center justify-center px-2">
                 <input
                   type="checkbox"
@@ -182,14 +185,14 @@ const ChatContainer = () => {
               </div>
 
               <div
-                onContextMenu={(e) => handleMenuOptions(e, message._id)}
-                onDoubleClick={(e) => handleMenuOptions(e, message._id)}
-                className={`chat-bubble flex flex-col cursor-pointer ${
+                onContextMenu={(e) => handleMenuOptions(e, message)}
+                onDoubleClick={(e) => handleMenuOptions(e, message)}
+                className={`chat-bubble flex flex-col  ${
                   message.isDeletedEveryone 
-                    ? "bg-base-300/70 text-base-content/40 italic shadow-none" 
+                    ? "bg-base-300/70 text-base-content/40 italic shadow-none cursor-default" 
                     : message.senderId === authUser._id 
-                      ? "chat-bubble-primary" 
-                      : "bg-base-200 text-base-content"
+                      ? "chat-bubble-primary cursor-pointer" 
+                      : "bg-base-200 text-base-content cursor-pointer"
                 }`}
               >
                 {message.isDeletedEveryone ? (

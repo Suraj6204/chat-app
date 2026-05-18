@@ -72,10 +72,10 @@ export const useChatStore = create((set, get) => ({
     },
 
     //chatslice
-    openModal: (type, ids) => set({ 
+    openModal: (type, messageIds) => set({ 
         isModalOpen: true, 
         modalType: type, 
-        modalMessageIds: ids 
+        modalMessageIds: messageIds 
     }),
     
     closeModal: () => set({ 
@@ -124,11 +124,41 @@ export const useChatStore = create((set, get) => ({
         }
     },
     
-    executeForward: async () => {
-        const { modalMessageIds, closeModal } = get();
-        console.log("Messages forwarded successfully with IDs:", modalMessageIds);
-        // Kal ko yahan par forward ki real API integrate kar lena
-        closeModal();
+    executeForward: async (targetUserIds) => {
+        const { modalMessageIds, messages , closeModal, selectedUser } = get();
+        if (modalMessageIds.length === 0 || targetUserIds.length === 0) return;
+        try{
+            const messagesToForward = messages.filter(msg => modalMessageIds.includes(msg._id));
+
+            let newlyCreatedMessages = [];
+            
+            for (const targetUserId of targetUserIds) {
+                for (const msg of messagesToForward) {
+                    const payload = {
+                        text: msg.text || "",
+                        image: msg.image || null,
+                        video: msg.video || null,
+                    };
+                    const res = await axiosInstance.post(`/messages/send/${targetUserId}`, payload);
+                    // Agar forward usi user ko kiya hai jiski chat abhi khuli hai, toh isko tracking array mein dalo
+                    if (selectedUser && selectedUser._id === targetUserId) {
+                        newlyCreatedMessages.push(res.data);
+                    }
+                }
+            }
+            
+            // 🔥 STATE SYNC: Agar currently opened chat mein forward hua hai, toh instantly screen par dikhao
+            if (newlyCreatedMessages.length > 0) {
+                set({ messages: [...get().messages, ...newlyCreatedMessages] });
+            }
+            
+            toast.success("Messages forwarded successfully!");
+            closeModal();
+        }catch(error){
+            console.error("Forwarding failed:", error);
+            toast.error("Failed to forward messages");
+        }
+        
     },
 
     subscribeToMessages: () => { //Receiveing 
