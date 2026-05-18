@@ -35,6 +35,7 @@ export const useChatStore = create((set, get) => ({
             //axios.get(url)
             const res = await axiosInstance.get(`/messages/${userId}`);
             set({messages : res.data});
+            //res : {message : "" , senderId : "" , receiverId : ""}
         }catch(error){
             toast.error(error.response.data.message);
         }finally{
@@ -83,35 +84,28 @@ export const useChatStore = create((set, get) => ({
         modalMessageIds: [] 
     }),
     
-    // deleteMessages: async (messageIds) => {
-        //     try {
-            //         await axiosInstance.post("/messages/delete", { messageIds });
-            
-    //         // Frontend state se bhi un messages ko turant hata do
-    //         const currentMessages = get().messages;
-    //         set({ 
-    //             messages: currentMessages.filter(msg => !messageIds.includes(msg._id)) 
-    //         });
-            
-    //         toast.success("Messages deleted successfully");
-    //     } catch (error) {
-        //         toast.error(error.response?.data?.message || "Failed to delete messages");
-        //         throw error;
-        //     }
-        // },
-        
     deleteMessages: async (messageIds, deleteType) => {
         const { selectedUser, messages } = get();
         try {
             await axiosInstance.post("/messages/delete", {
                 messageIds,
                 deleteType, // 'me' or 'everyone' or 'forward'
-                receiverId: selectedUser._id
+                receiverId: selectedUser?._id
             });
 
-            // UI se un messages ko filter out kar do instant response ke liye
-            const remainingMessages = messages.filter(msg => !messageIds.includes(msg._id));
-            set({ messages: remainingMessages });
+            if(deleteType === "me") {
+                // UI se un messages ko filter out kar do instant response ke liye
+                const remainingMessages = messages.filter(msg => !messageIds.includes(msg._id));
+                set({ messages: remainingMessages });
+            }
+            else{
+                const localUpdated = messages.map(msg => 
+                    messageIds.includes(msg._id)
+                    ? {...msg , text: "This message was deleted" , image: null , video: null, isDeletedEveryone: true}
+                    : msg
+                );
+                set({ messages: localUpdated });
+            }
             
             toast.success(`Deleted for ${deleteType === 'me' ? 'you' : 'everyone'}`);
         } catch (error) {
@@ -165,9 +159,12 @@ export const useChatStore = create((set, get) => ({
         });
 
         socket.on("messagesDeletedEveryone", (deletedMessageIds) => {
-            set({
-                messages: get().messages.filter(msg => !deletedMessageIds.includes(msg._id))
-            });
+            const liveUpdate = get().messages.map(msg => 
+                deletedMessageIds.includes(msg._id)
+                    ? {...msg , text: "This message was deleted" , image: null , video: null, isDeletedEveryone: true}
+                    : msg
+            );
+            set({ messages: liveUpdate });
         });
     },
     

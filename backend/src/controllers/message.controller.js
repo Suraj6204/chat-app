@@ -104,9 +104,17 @@ export const deleteMessages = async (req, res) => {
     
     if (deleteType === "everyone") {
       // 2. DELETE FOR EVERYONE: DB se completely delete karo (Only if you are the sender)
-      await Message.deleteMany({
-        _id: { $in: messageIds },
-        senderId: userId // Security check: Sirf apna bheja hua message delete for everyone hoga
+      await Message.updateMany({
+        _id: { $in: messageIds }, 
+        senderId: userId 
+      },
+      {
+        $set: { 
+          text: "This message was deleted", 
+          image: null, 
+          video: null,
+          isDeletedEveryone: true 
+        }
       });
 
       //is event se frontend me real time data hat jayega bina reload kiye

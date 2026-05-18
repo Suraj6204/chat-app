@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowDown, Copy, Forward, Info, Reply, Trash, X } from 'lucide-react';
+import { ArrowDown, Ban, Copy, Forward, Info, Reply, Trash, X } from 'lucide-react';
 import ChatHeader from './ChatHeader';
 import { useAuthStore } from '../store/useAuthStore';
 import { useChatStore } from '../store/useChatStore';
@@ -32,7 +32,7 @@ const ChatContainer = () => {
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedMessageIds, setSelectedMessageIds] = useState([]);
   const [actionMode, setActionMode] = useState(null);
- 
+
 
   const handleScroll = () => {
     if (scrollContainerRef.current) {
@@ -93,7 +93,7 @@ const ChatContainer = () => {
     Forward: handleForwardSelected,
     // star: handleStarSelected,     // Future feature
     // report: handleReportSelected  // Future feature
-  }; 
+  };
 
   useEffect(() => {
     const handleClickOnOutside = () => {
@@ -140,11 +140,11 @@ const ChatContainer = () => {
         {messages.map((message) => (
           <div
             key={message._id}
-            className={`flex items-center relative group w-full transition-colors duration-150 ${isSelectionMode ? 
-              selectedMessageIds.includes(message._id) ? 
-                'bg-base-200 cursor-pointer' : 'hover:bg-base-200 cursor-pointer' 
+            className={`flex items-center relative group w-full transition-colors duration-150 ${isSelectionMode ?
+              selectedMessageIds.includes(message._id) ?
+                'bg-base-200 cursor-pointer' : 'hover:bg-base-200 cursor-pointer'
               : ''
-            }`}
+              }`}
             onClick={() => isSelectionMode && handleToggleSelect(message._id)}
           >
             {/* Left Multi-select Checkbox Element */}
@@ -184,17 +184,35 @@ const ChatContainer = () => {
               <div
                 onContextMenu={(e) => handleMenuOptions(e, message._id)}
                 onDoubleClick={(e) => handleMenuOptions(e, message._id)}
-                className={`chat-bubble flex flex-col cursor-pointer ${message.senderId === authUser._id ? "chat-bubble-primary" : "bg-base-200 text-base-content"
-                  }`}
+                className={`chat-bubble flex flex-col cursor-pointer ${
+                  message.isDeletedEveryone 
+                    ? "bg-base-300/70 text-base-content/40 italic shadow-none" 
+                    : message.senderId === authUser._id 
+                      ? "chat-bubble-primary" 
+                      : "bg-base-200 text-base-content"
+                }`}
               >
-                {message.image && (
-                  <img src={message.image} alt="Attachment" className="sm:max-w-[200px] rounded-md mb-2" />
-                )}
-                {message.video && (
-                  <video src={message.video} controls className="sm:max-w-[200px] rounded-md mb-2" />
-                )}
-                {message.text && <p>{message.text}</p>}
-              </div>
+                {message.isDeletedEveryone ? (
+                  <div className="flex items-center gap-2 py-0.5 pr-2 select-none">
+                    <Ban size={14} className="opacity-60" />
+                    <span className="text-sm tracking-wide">
+                      {message.deletedByEveryone === authUser._id
+                        ? "You deleted this message"
+                        : `This message was deleted by ${selectedUser.fullName || "them"}`}
+                    </span>
+                  </div>
+                ) : (
+                <>
+                  {message.image && (
+                    <img src={message.image} alt="Attachment" className="sm:max-w-[200px] rounded-md mb-2" />
+                  )}
+                  {message.video && (
+                    <video src={message.video} controls className="sm:max-w-[200px] rounded-md mb-2" />
+                  )}
+                  {message.text && <p>{message.text}</p>}
+                </>
+              )}
+              </div> 
             </div>
           </div>
         ))}
@@ -215,15 +233,15 @@ const ChatContainer = () => {
           >
             <MenuOptionsBox icon={Reply} label="Reply" />
 
-            <MenuOptionsBox 
-              icon={Forward} 
-              label="Forward" 
+            <MenuOptionsBox
+              icon={Forward}
+              label="Forward"
               onClick={() => {
                 setIsSelectionMode(true);
                 setActionMode('Forward');
                 setSelectedMessageIds([menuOptions.messageId]);
                 setMenuOptions(prev => ({ ...prev, show: false }));
-              }}/>
+              }} />
 
             <MenuOptionsBox
               icon={Copy}
