@@ -19,6 +19,7 @@ const ChatContainer = () => {
     unsubscribeFromMessages,
     typingUsers,
     openModal,
+    setReplyPreviewMessage
   } = useChatStore();
 
   const { authUser } = useAuthStore();
@@ -32,12 +33,25 @@ const ChatContainer = () => {
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedMessageIds, setSelectedMessageIds] = useState([]);
   const [actionMode, setActionMode] = useState(null);
-
+  const [highlightedMessageId, setHighlightedMessageId] = useState(null);
 
   const handleScroll = () => {
     if (scrollContainerRef.current) {
       const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
       setIsScrolledUp(scrollHeight - scrollTop - clientHeight > 100);
+    }
+  };
+
+  const handleScrollToParentMessage = (parentMessageId) => {
+    const targetElement = document.getElementById(`msg-${parentMessageId}`);
+    if (targetElement) {
+      targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      
+      setHighlightedMessageId(parentMessageId);
+      
+      setTimeout(() => {
+        setHighlightedMessageId(null);
+      }, 2000);
     }
   };
 
@@ -140,14 +154,18 @@ const ChatContainer = () => {
         {messages.map((message) => (
           <div
             key={message._id}
-            className={`flex items-center relative group w-full transition-colors duration-150 ${isSelectionMode ?
-              selectedMessageIds.includes(message._id) ?
-                message.isDeletedEveryone ? 
-                'bg-base-300/70' :
-                'bg-base-200 cursor-pointer' 
-              : 'hover:bg-base-200 cursor-pointer'
-              : ''
-              }`}
+            id={`msg-${message._id}`}
+            className={`flex items-center relative group w-full transition-all duration-300 rounded-lg ${
+              highlightedMessageId === message._id 
+                ? 'bg-primary/20 ring-2 ring-primary/50 py-2' 
+                : isSelectionMode 
+                  ? selectedMessageIds.includes(message._id) 
+                    ? message.isDeletedEveryone 
+                      ? 'bg-base-300/70' 
+                      : 'bg-base-200 cursor-pointer' 
+                    : 'hover:bg-base-200 cursor-pointer'
+                  : 'hover:bg-base-200/30'
+            }`}
             onClick={() => isSelectionMode && !message.isDeletedEveryone && handleToggleSelect(message._id)}
           >
             {/* Left Multi-select Checkbox Element */}
@@ -206,6 +224,36 @@ const ChatContainer = () => {
                   </div>
                 ) : (
                 <>
+                  {message.replyTo && (
+                    <div
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleScrollToParentMessage(message.replyTo._id);
+                      }}
+                      className={`mb-2 p-2 rounded-lg border-l-4 text-xs cursor-pointer transition-all flex flex-col gap-0.5 max-w-full select-none ${
+                        message.senderId === authUser._id
+                          ? 'bg-primary-focus/30 border-white text-white/90 hover:bg-primary-focus/45'
+                          : 'bg-base-300/60 border-primary text-base-content/90 hover:bg-base-300/90'
+                      }`}
+                    >
+                      <span className={`font-semibold ${
+                        message.senderId === authUser._id ? 'text-white' : 'text-primary'
+                      }`}>
+                        {message.replyTo.senderId === authUser._id ? "You" : (selectedUser?.fullName || "User")}
+                      </span>
+                      <span className="opacity-80 truncate block">
+                        {message.replyTo.text ? (
+                          message.replyTo.text
+                        ) : message.replyTo.image ? (
+                          "📷 Photo"
+                        ) : message.replyTo.video ? (
+                          "🎥 Video"
+                        ) : (
+                          "Attachment"
+                        )}
+                      </span>
+                    </div>
+                  )}
                   {message.image && (
                     <img src={message.image} alt="Attachment" className="sm:max-w-[200px] rounded-md mb-2" />
                   )}
@@ -221,6 +269,19 @@ const ChatContainer = () => {
         ))}
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
         {/* Right Click Popup Box Options Menu */}
         {menuOptions.show && (
           <div
@@ -234,7 +295,15 @@ const ChatContainer = () => {
               `,
             }}
           >
-            <MenuOptionsBox icon={Reply} label="Reply" />
+            <MenuOptionsBox 
+              icon={Reply} 
+              label="Reply" 
+              onClick={() => {
+                const msg = messages.find(m => m._id === menuOptions.messageId);
+                if (msg) setReplyPreviewMessage(msg);
+                setMenuOptions(prev => ({ ...prev, show: false }));
+              }} 
+            />
 
             <MenuOptionsBox
               icon={Forward}

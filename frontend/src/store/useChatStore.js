@@ -10,6 +10,7 @@ export const useChatStore = create((set, get) => ({
     isUsersLoading: false,
     isMessagesLoading: false,
     typingUsers: [], // stores array of user ids who are typing
+    replyPreviewMessage:null,
 
     //  Modal Logic (Multi-Select) - Delete / Forward
     isModalOpen: false,
@@ -43,17 +44,24 @@ export const useChatStore = create((set, get) => ({
         }
     },
 
-    sendMessage: async(messageData) => { //messageData - {text , image}
-        const { selectedUser, messages } = get();
+    setReplyPreviewMessage: (message) => set({ replyPreviewMessage: message }),
+    clearReplyPreviewMessage: () => set({ replyPreviewMessage: null }),
+
+    //it sends replied and normal messages
+    sendMessage: async(messageData) => { //messageData - {text , image , video}
+        const { selectedUser,replyPreviewMessage , messages } = get();
         try{
-            //axios.post(url , data)
-            const res = await axiosInstance.post(`/messages/send/${selectedUser._id}` , messageData);
-            set({messages: [...messages ,res.data]});
+            const payload = {
+                ...messageData,
+                replyTo: replyPreviewMessage ? replyPreviewMessage._id : null // 🔥 Append target reply reference id
+            };
+            const res = await axiosInstance.post(`/messages/send/${selectedUser._id}` , payload);
+
+            set({messages: [...messages , res.data] , replyPreviewMessage: null});
         }catch(error){
             toast.error(error.response.data.message);
         }
     },
-    
     
     setSelectedUser: (selectedUser) => set({ selectedUser }),
 

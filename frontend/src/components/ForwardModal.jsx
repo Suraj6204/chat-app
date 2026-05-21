@@ -17,7 +17,7 @@ const ForwardModal = () => {
   // Toggle selected users for multiple forward support
   const handleToggleUser = (userId) => {
     setSelectedUserIds((prev) =>
-      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
+      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId] // user already selected hai toh remove karo nhi toh add karo
     );
   };
 

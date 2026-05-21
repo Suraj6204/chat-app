@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { useChatStore } from "../store/useChatStore";
-import { Image, Plus, Send, Smile, XCircle, FileText, Camera, Mic } from "lucide-react";
+import { useAuthStore } from "../store/useAuthStore";
+import { Image, Plus, Send, Smile, XCircle, FileText, Camera, Mic, X } from "lucide-react";
 import toast from "react-hot-toast";
 import MenuOptions from "./MenuOptionsBox";
 
@@ -12,7 +13,8 @@ const MessageInput = () => {
   const fileInputRef = useRef(null);
   const menuRef = useRef(null);
   const typingTimeoutRef = useRef(null);
-  const { sendMessage, sendStartTyping, sendStopTyping } = useChatStore();
+  const { sendMessage, sendStartTyping, sendStopTyping, replyPreviewMessage, clearReplyPreviewMessage, selectedUser } = useChatStore();
+  const { authUser } = useAuthStore();
 
   const handleImageVideoChange = (e) => {
     const file = e.target.files[0];
@@ -145,66 +147,69 @@ const MessageInput = () => {
         </div>
       )}
 
-      <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-        {/* Main Input Wrapper */}
-        <div className="relative flex-1 flex items-center">
+      <form onSubmit={handleSendMessage} className="flex items-end gap-2 p-2">
+        <div className="flex-1 bg-base-200 rounded-3xl flex flex-col overflow-hidden transition-all duration-300 shadow-inner border border-base-300/30">
+          
+          {/* 1. REPLY BOX  */}
+          {replyPreviewMessage && (
+            <div className="m-2 p-3 bg-base-300/60 rounded-xl border-l-4 border-primary flex items-center justify-between animate-in fade-in slide-in-from-bottom-2 duration-200">
+              <div className="flex flex-col min-w-0">
+                <span className="text-xs font-semibold text-primary">
+                  Replying to {replyPreviewMessage.senderId === authUser._id ? "yourself" : (selectedUser?.fullName || "User")}
+                </span>
+                <span className="text-sm text-base-content/70 truncate max-w-50 mt-0.5">
+                  {replyPreviewMessage.text || "Media attachment"}
+                </span>
+              </div>
+              <button 
+                type="button"
+                onClick={clearReplyPreviewMessage} 
+                className="text-base-content/40 hover:text-error p-1 rounded-full hover:bg-base-content/10 transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          )}
 
-          {/* Plus Icon (Left Side) */}
-          <button
-            type="button"
-            className="absolute z-10 left-4 text-base-content/70 hover:bg-base-content/10 rounded-full p-2 cursor-pointer"
-            onClick={() => setMenuOptions(!menuOptions)}
-          >
-            <Plus size={22} />
-          </button>
-
-          {/* Input Field - pill shape */}
-          <input
-            type="text"
-            className="w-full bg-base-200 text-base-content input input-bordered rounded-full pl-15 pr-24 py-6 text-base sm:font-medium focus:outline-none border-none shadow-inner"
-            placeholder="Type a message..."
-            value={text}
-            onChange={handleInputChange}
-          />
-
-          {/* Right Side Icons (Inside Input) */}
-          <div className="absolute right-4 flex items-center gap-4 text-base-content/50">
-            <button type="button" className="hover:text-primary">
-              <Smile size={22} />
-            </button>
-
-            {/* Camera Icon to trigger file upload */}
+          {/* 2. INPUT AREA ROW */}
+          <div className="relative flex items-center w-full min-h-14">
             <button
               type="button"
-              className={`hover:text-primary ${imagePreview ? "text-emerald-500" : ""}`}
-              onClick={() => fileInputRef.current?.click()}
+              className="z-10 ml-2 text-base-content/70 hover:bg-base-content/10 rounded-full p-2"
+              onClick={() => setMenuOptions(!menuOptions)}
             >
-              <Camera size={22} />
+              <Plus size={22} />
             </button>
-          </div>
 
-          {/* Hidden File Input (Images and videos) */}
-          <input
-            type="file"
-            accept="image/*,video/*"
-            className="hidden"
-            ref={fileInputRef}
-            onChange={handleImageVideoChange}
-          />
+            <input
+              type="text"
+              className="flex-1 bg-transparent py-4 px-2 text-base focus:outline-none placeholder-base-content/50"
+              placeholder="Type a message..."
+              value={text}
+              onChange={handleInputChange}
+            />
+
+            {/* Right Icons: Smile + Camera */}
+            <div className="flex items-center gap-3 mr-4 text-base-content/50">
+              <button type="button" className="hover:text-primary"><Smile size={22} /></button>
+              <button 
+                type="button" 
+                className={`hover:text-primary ${imagePreview ? "text-emerald-500" : ""}`}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Camera size={22} />
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* Send or Mic Button (Outside) */}
+        {/* Send/Mic Button */}
         <button
           type="submit"
-          className="btn btn-circle bg-primary hover:bg-primary/90 border-none text-white shadow-lg"
+          className="btn btn-circle bg-primary hover:bg-primary/90 border-none text-white shadow-lg mb-2"
           disabled={!text.trim() && !imagePreview}
         >
-          {/* Logic: Agar kuch likha hai ya image hai toh Send, warna Mic */}
-          {text.trim() || imagePreview ? (
-            <Send size={20} />
-          ) : (
-            <Mic size={20} />
-          )}
+          {text.trim() || imagePreview ? <Send size={20} /> : <Mic size={20} />}
         </button>
       </form>
     </div>

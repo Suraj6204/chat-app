@@ -27,7 +27,8 @@ export const getMessages = async (req, res) => {
                 { senderId: userToChatId, receiverId: myId },
             ],
             deletedBy: {$ne: myId}   //this helps to not show the msg deleted by you
-        });
+        }).populate("replyTo", "text image video senderId"); 
+        //populate to give proper structure=> {text :"" , replyTo: {text : "" , image: "" , video: "" , senderId: ""}}
 
         res.status(200).json(messages);
 
@@ -40,7 +41,7 @@ export const getMessages = async (req, res) => {
 
 export const sendMessage = async (req , res) => { // :/receiverId
     try{
-        const {text , image , video} = req.body;
+        const {text , image , video, replyTo} = req.body;
         const senderId = req.user._id;
         const {id : receiverId} = req.params;
 
@@ -68,15 +69,18 @@ export const sendMessage = async (req , res) => { // :/receiverId
             text,
             image: imageUrl,
             video: videoUrl,
+            replyTo: replyTo || null,
         })
         await newMessage.save();
 
+        const populatedMessage = await Message.findById(newMessage._id).populate("replyTo", "text image video senderId");
+
         const receiverSocketId = getReceiverSocketId(receiverId);
         if (receiverSocketId) {
-            io.to(receiverSocketId).emit("newMessage", newMessage);
+            io.to(receiverSocketId).emit("newMessage", populatedMessage);
         }
 
-        res.status(201).json(newMessage);
+        res.status(201).json(populatedMessage);
     }
     catch (error) {
         console.error("Error in sendMessages: ", error.message);

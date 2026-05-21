@@ -23,7 +23,7 @@ const App = () => {
     checkAuth();
   }, [checkAuth]);
 
-  console.log("Online users:", onlineUsers);
+  // console.log("Online users:", onlineUsers);
 
   if (isCheckingAuth && !authUser)
     return (
@@ -31,7 +31,7 @@ const App = () => {
         <Loader className="size-10 animate-spin" />
       </div>
     );
-  
+
   return (
     <div data-theme={theme} className="min-h-screen transition-all duration-300">
       <Navbar />
@@ -44,7 +44,7 @@ const App = () => {
         <Route path="/profile" element={authUser ? <ProfilePage /> : <Navigate to="/login" />} />
         <Route path="/verify-email" element={authUser && !authUser.isVerified ? <EmailVerify /> : <Navigate to="/" />} />
       </Routes>
-      
+
       <Toaster />
     </div>
   )
