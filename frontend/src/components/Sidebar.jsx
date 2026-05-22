@@ -1,14 +1,30 @@
-import { Users, Menu } from 'lucide-react'
-import React, { useState ,useEffect } from 'react'
-import { useChatStore } from '../store/useChatStore';
-import { useAuthStore } from '../store/useAuthStore';
-import SidebarSkeleton from './skeletons/SidebarSkeleton';
+import { Users, Menu , Ban, MinusCircle, Trash, Pin, PinIcon, PinOff } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { useChatStore } from "../store/useChatStore";
+import { useAuthStore } from "../store/useAuthStore";
+import SidebarSkeleton from "./skeletons/SidebarSkeleton";
+import MenuOptionsBox from "./MenuOptionsBox";
 
 const Sidebar = () => {
-  const { getUsers, users, selectedUser, setSelectedUser, isUsersLoading, typingUsers } = useChatStore();
+  const {
+    getUsers,
+    users,
+    selectedUser,
+    setSelectedUser,
+    isUsersLoading,
+    typingUsers,
+    activeMenuId,
+    setActiveMenuId,
+  } = useChatStore();
 
   const { onlineUsers, authUser } = useAuthStore();
   const [showOnlineOnly, setShowOnlineOnly] = useState(false);
+  const [menuOptions, setMenuOptions] = useState({
+    show: false,
+    x: 0,
+    y: 0,
+    messageId: null,
+  });
 
   useEffect(() => {
     getUsers();
@@ -18,15 +34,45 @@ const Sidebar = () => {
     ? users.filter((user) => onlineUsers.includes(user._id))
     : users;
 
-  if(isUsersLoading){
-    return <SidebarSkeleton />
+  if (isUsersLoading) {
+    return <SidebarSkeleton />;
   }
+
+  const handleMenuOptions = (e, userId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setMenuOptions({
+      show: true,
+      x: e.clientX,
+      y: e.clientY,
+      userId,
+    });
+    setActiveMenuId('sidebar')
+  };
+
+  useEffect(() => {
+    const handleClickOnOutside = () => {
+      setMenuOptions((prev) => ({ ...prev, show: false }));
+    };
+    window.addEventListener("click", handleClickOnOutside);
+    return () => window.removeEventListener("click", handleClickOnOutside);
+  }, []);
+
+  useEffect(()=>{
+    if(activeMenuId != 'sidebar'){
+      setMenuOptions(prev => ({...prev , show:false}))
+    }
+  },[activeMenuId])
+
   return (
     <aside className="h-full w-20 lg:w-72 border-r border-base-300 flex flex-col transition-all duration-200">
       <div className="border-b border-base-300 w-full p-5">
         <div className="flex items-center gap-2">
           {authUser && (
-            <label htmlFor="my-drawer" className="btn btn-ghost btn-circle btn-sm drawer-button">
+            <label
+              htmlFor="my-drawer"
+              className="btn btn-ghost btn-circle btn-sm drawer-button"
+            >
               <Menu className="size-5" />
             </label>
           )}
@@ -45,23 +91,27 @@ const Sidebar = () => {
             />
             <span className="text-sm">Show online only</span>
           </label>
-          <span className="text-xs text-zinc-500">({onlineUsers.length - 1} online)</span>
+          <span className="text-xs text-zinc-500">
+            ({onlineUsers.length - 1} online)
+          </span>
         </div>
       </div>
 
+      {/* all users */}
       <div className="overflow-y-auto w-full py-3">
         {filteredUsers.map((user) => (
           <button
             key={user._id}
             onClick={() => setSelectedUser(user)}
+            onContextMenu={(e) => handleMenuOptions(e, user._id)}
+            onDoubleClick={(e) => handleMenuOptions(e, user._id)}
             className={`
-              w-full p-3 flex items-center gap-3
-              hover:bg-base-300 transition-colors
+              w-full p-3 flex items-center gap-3 hover:bg-base-300 transition-colors cursor-pointer
               ${selectedUser?._id === user._id ? "bg-base-300 ring-1 ring-base-300" : ""}
             `}
           >
             <div className="relative mx-auto lg:mx-0">
-               <img
+              <img
                 src={user.profilePic || "/avatar.png"}
                 alt={user.name}
                 className="size-12 object-cover rounded-full"
@@ -79,9 +129,15 @@ const Sidebar = () => {
               <div className="font-medium truncate">{user.fullName}</div>
               <div className="text-sm text-zinc-400">
                 {typingUsers?.includes(user._id) ? (
-                  <span className="text-emerald-500 font-medium">Typing...</span>
-                ) : onlineUsers.includes(user._id) ? "Online" : "Offline"}
-              </div> 
+                  <span className="text-emerald-500 font-medium">
+                    Typing...
+                  </span>
+                ) : onlineUsers.includes(user._id) ? (
+                  "Online"
+                ) : (
+                  "Offline"
+                )}
+              </div>
             </div>
           </button>
         ))}
@@ -90,8 +146,58 @@ const Sidebar = () => {
           <div className="text-center text-zinc-500 py-4">No online users</div>
         )}
       </div>
-    </aside>
-  )
-}
 
-export default Sidebar
+      {menuOptions.show && (
+        <div
+          className="fixed mb-2 w-56 bg-base-200 border border-base-300 rounded-2xl shadow-2xl py-2 z-50"
+          style={{
+            top: menuOptions.y,
+            left: menuOptions.x,
+            transform: `
+                ${menuOptions.x + 224 > window.innerWidth ? "translateX(-100%)" : "translateX(0)"} 
+                ${menuOptions.y + 300 > window.innerHeight ? "translateY(-100%)" : "translateY(0)"}
+              `,
+          }}
+        >
+          <MenuOptionsBox
+            icon={Pin}
+            label="Pin"
+            onClick={() => {
+              setMenuOptions(prev => ({ ...prev, show: false }));
+            }}
+          />
+
+          <hr className="border-base-300 my-1" />
+
+          <MenuOptionsBox
+            icon={Ban}
+            label="Block"
+            onClick={() => {
+              setMenuOptions(prev => ({ ...prev, show: false }));
+            }}
+          />
+
+          <MenuOptionsBox
+            icon={MinusCircle}
+            label="Clear Chat"
+            onClick={() => {
+              setMenuOptions(prev => ({ ...prev, show: false }));
+            }}
+          />
+          <MenuOptionsBox
+            icon={Trash}
+            label="Delete Chat"
+            className="text-error hover:bg-error/10"
+            onClick={() => {
+              // setActionMode('Delete');
+              setMenuOptions(prev => ({ ...prev, show: false }));
+            }}
+          />
+
+        </div>
+      )}
+    </aside>
+  );
+};
+
+export default Sidebar;

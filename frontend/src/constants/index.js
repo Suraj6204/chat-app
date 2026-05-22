@@ -23,7 +23,7 @@ export const THEMES = [
   "cmyk",
   "autumn",
   "business",
-  "acid",
+  "acid",  
   "lemonade",
   "night",
   "coffee",

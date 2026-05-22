@@ -19,7 +19,9 @@ const ChatContainer = () => {
     unsubscribeFromMessages,
     typingUsers,
     openModal,
-    setReplyPreviewMessage
+    setReplyPreviewMessage,
+    activeMenuId,
+    setActiveMenuId,
   } = useChatStore();
 
   const { authUser } = useAuthStore();
@@ -71,6 +73,7 @@ const ChatContainer = () => {
       y: e.clientY,
       messageId: message._id,
     });
+    setActiveMenuId('chat');
   };
 
   // Checkbox select/deselect handling
@@ -131,6 +134,12 @@ const ChatContainer = () => {
       scrollToBottom();
     }
   }, [messages, typingUsers, authUser._id]);
+
+  useEffect(()=>{
+    if(activeMenuId != 'chat'){
+      setMenuOptions(prev => ({...prev , show:false}))
+    }
+  } , [activeMenuId])
 
   if (isMessagesLoading) {
     return (
@@ -255,10 +264,10 @@ const ChatContainer = () => {
                     </div>
                   )}
                   {message.image && (
-                    <img src={message.image} alt="Attachment" className="sm:max-w-[200px] rounded-md mb-2" />
+                    <img src={message.image} alt="Attachment" className="sm:max-w-5 rounded-md mb-2" />
                   )}
                   {message.video && (
-                    <video src={message.video} controls className="sm:max-w-[200px] rounded-md mb-2" />
+                    <video src={message.video} controls className="sm:max-w-50 rounded-md mb-2" />
                   )}
                   {message.text && <p>{message.text}</p>}
                 </>
@@ -267,20 +276,6 @@ const ChatContainer = () => {
             </div>
           </div>
         ))}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
         {/* Right Click Popup Box Options Menu */}
         {menuOptions.show && (

@@ -11,12 +11,14 @@ export const useChatStore = create((set, get) => ({
     isMessagesLoading: false,
     typingUsers: [], // stores array of user ids who are typing
     replyPreviewMessage:null,
+    activeMenuId: null,
 
     //  Modal Logic (Multi-Select) - Delete / Forward
     isModalOpen: false,
     modalType: null,        // 'Delete' ya 'Forward'
     modalMessageIds: [],
 
+    
     getUsers: async () => { //userId pass krne ka jrurt nhi hai , req.user se mil jata hai automatic                set({ isUsersLoading: true });
         try{
             const res = await axiosInstance.get("/messages/users");
@@ -29,7 +31,7 @@ export const useChatStore = create((set, get) => ({
             set({ isUsersLoading: false });
         }
     },
-
+    
     getMessages: async (userId) => {
         set({ isMessagesLoading: true });
         try{
@@ -43,6 +45,8 @@ export const useChatStore = create((set, get) => ({
             set({ isMessagesLoading: false });
         }
     },
+
+    setActiveMenuId: (menuId) => set({activeMenuId: menuId}),
 
     setReplyPreviewMessage: (message) => set({ replyPreviewMessage: message }),
     clearReplyPreviewMessage: () => set({ replyPreviewMessage: null }),
