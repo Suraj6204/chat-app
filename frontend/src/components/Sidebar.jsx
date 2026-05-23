@@ -15,6 +15,7 @@ const Sidebar = () => {
     typingUsers,
     activeMenuId,
     setActiveMenuId,
+    clearChat
   } = useChatStore();
 
   const { onlineUsers, authUser } = useAuthStore();
@@ -76,8 +77,6 @@ const Sidebar = () => {
               <Menu className="size-5" />
             </label>
           )}
-          <Users className="size-6" />
-          <span className="font-medium hidden lg:block">Contacts</span>
         </div>
 
         {/* TODO: Online filter toggle */}
@@ -181,6 +180,7 @@ const Sidebar = () => {
             icon={MinusCircle}
             label="Clear Chat"
             onClick={() => {
+              clearChat(menuOptions.userId);
               setMenuOptions(prev => ({ ...prev, show: false }));
             }}
           />

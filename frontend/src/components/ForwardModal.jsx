@@ -5,7 +5,7 @@ import { useChatStore } from '../store/useChatStore';
 import { useAuthStore } from '../store/useAuthStore';
 
 const ForwardModal = () => {
-  const { isModalOpen, modalType, closeModal, users, executeForward, modalMessageIds } = useChatStore();
+  const { isModalOpen, modalType, closeModal, users, executeForward } = useChatStore();
   const { authUser } = useAuthStore();
   
   const [searchQuery, setSearchQuery] = useState("");
@@ -17,7 +17,7 @@ const ForwardModal = () => {
   // Toggle selected users for multiple forward support
   const handleToggleUser = (userId) => {
     setSelectedUserIds((prev) =>
-      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId] // user already selected hai toh remove karo nhi toh add karo
+      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
     );
   };
 
@@ -35,36 +35,41 @@ const ForwardModal = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="w-full max-w-md bg-[#111b21] border border-gray-800 rounded-2xl flex flex-col max-h-[85vh] text-[#e9edef] shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      {/* Container Box: Pure DaisyUI Theme Surface */}
+      <div className="w-full max-w-md bg-base-100 border border-base-300 rounded-2xl flex flex-col max-h-[85vh] text-base-content shadow-2xl overflow-hidden">
         
         {/* Header Block */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-base-300">
           <div className="flex items-center gap-4">
-            <button onClick={closeModal} className="hover:bg-gray-800 p-1.5 rounded-full transition-colors text-[#aebac1]">
-              <X size={22} />
+            <button 
+              onClick={closeModal} 
+              className="btn btn-ghost btn-circle btn-sm text-base-content/70 hover:text-error transition-colors"
+              type="button"
+            >
+              <X size={20} />
             </button>
-            <h3 className="text-lg font-medium text-[#e9edef]">Forward message to</h3>
+            <h3 className="text-lg font-semibold text-base-content">Forward message to</h3>
           </div>
         </div>
 
         {/* Search Input Bar wrapper */}
         <div className="p-3">
-          <div className="flex items-center gap-3 bg-[#202c33] rounded-xl px-4 py-2 border border-transparent focus-within:border-[#00a884] transition-all">
-            <Search size={18} className="text-[#8696a0]" />
+          <div className="flex items-center gap-3 bg-base-200 rounded-xl px-4 py-2 border border-base-300 focus-within:border-primary transition-all duration-200">
+            <Search size={18} className="text-base-content/50" />
             <input 
               type="text" 
               placeholder="Search name"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-transparent w-full focus:outline-none text-sm text-[#e9edef] placeholder-[#8696a0]"
+              className="bg-transparent w-full focus:outline-none text-sm text-base-content placeholder-base-content/40"
             />
           </div>
         </div>
 
         {/* Users Selection Scroll Area */}
         <div className="flex-1 overflow-y-auto px-2 pb-4 custom-scrollbar">
-          <p className="text-xs font-semibold text-[#00a884] px-4 pt-2 pb-3 tracking-wider uppercase">Recent chats</p>
+          <p className="text-xs font-bold text-primary px-4 pt-2 pb-3 tracking-wider uppercase">Recent chats</p>
           
           <div className="space-y-0.5">
             {filteredUsers.map((user) => {
@@ -75,34 +80,34 @@ const ForwardModal = () => {
                 <div 
                   key={user._id}
                   onClick={() => handleToggleUser(user._id)}
-                  className={`flex items-center gap-4 px-4 py-3 hover:bg-[#202c33] cursor-pointer rounded-xl transition-colors ${
-                    isSelected ? 'bg-[#202c33]' : ''
+                  className={`flex items-center gap-4 px-4 py-3 hover:bg-base-200 cursor-pointer rounded-xl transition-colors ${
+                    isSelected ? 'bg-base-200' : ''
                   }`}
                 >
-                  {/* Styled Rounded Checkbox */}
+                  {/* Styled DaisyUI Checkbox */}
                   <div className="relative flex items-center justify-center">
                     <input 
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => handleToggleUser(user._id)}
                       onClick={(e) => e.stopPropagation()}
-                      className="checkbox checkbox-sm rounded-md border-2 border-[#8696a0] checked:border-[#00a884] checked:bg-[#00a884]"
+                      className="checkbox checkbox-primary checkbox-sm rounded-md border-base-content/30"
                     />
                   </div>
 
-                  {/* Profile Picture */}
+                  {/* Profile Picture (DaisyUI Avatar Architecture) */}
                   <div className="avatar">
-                    <div className="size-11 rounded-full border border-gray-800">
-                      <img src={user.profilePic || "/avatar.png"} alt={user.fullName} />
+                    <div className="size-11 rounded-full border border-base-300">
+                      <img src={user.profilePic || "/avatar.png"} alt={user.fullName} className="object-cover" />
                     </div>
                   </div>
 
                   {/* User Details Name Layout */}
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-[15px] font-medium text-[#e9edef] truncate">
+                    <h4 className="text-[15px] font-medium text-base-content truncate">
                       {isMe ? "Suraj (You)" : user.fullName}
                     </h4>
-                    <p className="text-xs text-[#8696a0] truncate mt-0.5">
+                    <p className="text-xs text-base-content/60 truncate mt-0.5">
                       {isMe ? "Message yourself" : "Active chat session"}
                     </p>
                   </div>
@@ -111,21 +116,21 @@ const ForwardModal = () => {
             })}
 
             {filteredUsers.length === 0 && (
-              <p className="text-sm text-[#8696a0] text-center py-8">No contacts found</p>
+              <p className="text-sm text-base-content/50 text-center py-8">No contacts found</p>
             )}
           </div>
         </div>
 
         {/* Dynamic Action Trigger Footer */}
         {selectedUserIds.length > 0 && (
-          <div className="p-4 bg-[#202c33]/50 border-t border-gray-800 flex justify-end items-center gap-3 animate-in slide-in-from-bottom duration-200">
-            <span className="text-sm text-[#8696a0]">
+          <div className="p-4 bg-base-200 border-t border-base-300 flex justify-end items-center gap-3 animate-in slide-in-from-bottom duration-200">
+            <span className="text-sm text-base-content/60 font-medium">
               {selectedUserIds.length} selected
             </span>
             <button 
               onClick={handleForwardSubmit}
               disabled={isSubmitting}
-              className="btn btn-sm border-none bg-[#00a884] text-[#111b21] hover:bg-[#00a884]/90 rounded-full px-6 font-semibold"
+              className="btn btn-sm btn-primary rounded-full px-6 font-semibold"
             >
               {isSubmitting ? "Forwarding..." : "Forward"}
             </button>

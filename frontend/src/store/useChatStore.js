@@ -173,6 +173,23 @@ export const useChatStore = create((set, get) => ({
         
     },
 
+    clearChat: async (targetUserId) => {
+        try {
+        await axiosInstance.patch(`/messages/clear/${targetUserId}`);
+        
+        // Agar current open chat hi clear hui hai, toh local state se messages khali karo
+        const { selectedUser } = get();
+        if (selectedUser?._id === targetUserId) {
+            set({ messages: [] });
+        }
+
+        toast.success("Chat cleared successfully");
+        } catch (error) {
+        console.error("Error clearing chat:", error);
+        toast.error(error.response?.data?.message || "Failed to clear chat");
+        }
+    },
+
     subscribeToMessages: () => { //Receiveing 
         const { selectedUser } = get();
         if (!selectedUser) return;
