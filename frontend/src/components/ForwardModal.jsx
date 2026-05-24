@@ -35,7 +35,7 @@ const ForwardModal = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       {/* Container Box: Pure DaisyUI Theme Surface */}
       <div className="w-full max-w-md bg-base-100 border border-base-300 rounded-2xl flex flex-col max-h-[85vh] text-base-content shadow-2xl overflow-hidden">
         

@@ -15,7 +15,7 @@ const Sidebar = () => {
     typingUsers,
     activeMenuId,
     setActiveMenuId,
-    clearChat
+    openModal
   } = useChatStore();
 
   const { onlineUsers, authUser } = useAuthStore();
@@ -24,7 +24,7 @@ const Sidebar = () => {
     show: false,
     x: 0,
     y: 0,
-    messageId: null,
+    userId : null,
   });
 
   useEffect(() => {
@@ -39,7 +39,7 @@ const Sidebar = () => {
     return <SidebarSkeleton />;
   }
 
-  const handleMenuOptions = (e, userId) => {
+  const handleMenuOptions = (e, userId) => { //isse menubox khul rha
     e.preventDefault();
     e.stopPropagation();
     setMenuOptions({
@@ -180,16 +180,20 @@ const Sidebar = () => {
             icon={MinusCircle}
             label="Clear Chat"
             onClick={() => {
-              clearChat(menuOptions.userId);
+              openModal('ClearChat' , menuOptions.userId);
               setMenuOptions(prev => ({ ...prev, show: false }));
             }}
           />
+
           <MenuOptionsBox
             icon={Trash}
             label="Delete Chat"
             className="text-error hover:bg-error/10"
             onClick={() => {
-              // setActionMode('Delete');
+              openModal('DeleteChat' , {
+                targetId: menuOptions.userId,
+                targetType: "user"
+              });
               setMenuOptions(prev => ({ ...prev, show: false }));
             }}
           />
