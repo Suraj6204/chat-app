@@ -135,13 +135,10 @@ const ChatContainer = () => {
     (id) => id.toString() === selectedUser?._id.toString(), //blockeduser:[objectId] and selectedUser.id:(string) - convert both in string to match
   );
 
-  //me jisse blocked hua hu (you are blocked)
-  // const isBlockedBySomeone = selectedUser?.blockedUsers?.some(
-  //   (id) => id.toString() === authUser?._id.toString(),
-  // );
+  //isBlockedByThem -   //me jisse blocked hua hu (you are blocked)
+  // isko hmesa backend se lo , taki user ko pata na chale samne wala ar kis kis ko block kiya h
 
-  const isBlocked = isBlockedByMe || isBlockedByThem;
-
+  const isBlocked = isBlockedByMe || isBlockedByThem; 
   useEffect(() => {
     const handleClickOnOutside = () => {
       setMenuOptions((prev) => ({ ...prev, show: false }));
@@ -182,12 +179,6 @@ const ChatContainer = () => {
       <div className="flex-1 flex flex-col overflow-auto">
         <ChatHeader />
         <MessageSkeleton />
-        {/* {isBlocked ? (
-          <div className="p-4 bg-base-200 text-center text-sm text-base-content/60">
-            You cannot send messages to this user because you have blocked them.
-          </div>) : 
-          <MessageInput />
-        } */}
       </div>
     );
   }

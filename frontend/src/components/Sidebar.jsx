@@ -1,4 +1,12 @@
-import { Users, Menu , Ban, MinusCircle, Trash, Pin, PinIcon, PinOff } from "lucide-react";
+import {
+  Users,
+  Menu,
+  Ban,
+  MinusCircle,
+  Trash,
+  PinIcon,
+  PinOff,
+} from "lucide-react";
 import React, { useState, useEffect } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
@@ -15,7 +23,8 @@ const Sidebar = () => {
     typingUsers,
     activeMenuId,
     setActiveMenuId,
-    openModal
+    openModal,
+    togglePinChat,
   } = useChatStore();
 
   const { onlineUsers, authUser } = useAuthStore();
@@ -24,22 +33,31 @@ const Sidebar = () => {
     show: false,
     x: 0,
     y: 0,
-    userId : null,
+    userId: null,
   });
 
-  useEffect(() => {
-    getUsers();
-  }, [getUsers]);
+  // Right click context menu ke liye context pin status nikalne ke liye
+  const isSelectedContextMenuChatPinned = authUser?.pinnedChats?.includes(menuOptions.userId);
 
   const filteredUsers = showOnlineOnly
-    ? users.filter((user) => onlineUsers.includes(user._id))
-    : users;
+  ? users.filter((user) => onlineUsers.includes(user._id))
+  : users;
+  
+  const sortedUsers = [...filteredUsers].sort((a, b) => {
+    const aPinned = authUser?.pinnedChats?.includes(a._id) || false;
+    const bPinned = authUser?.pinnedChats?.includes(b._id) || false;
+
+    if (aPinned && !bPinned) return -1; // a upar jayega
+    if (!aPinned && bPinned) return 1; // b upar jayega
+    return 0; // standard order intact rahega
+  });
 
   if (isUsersLoading) {
     return <SidebarSkeleton />;
   }
 
-  const handleMenuOptions = (e, userId) => { //isse menubox khul rha
+  const handleMenuOptions = (e, userId) => {
+    //isse menubox khul rha
     e.preventDefault();
     e.stopPropagation();
     setMenuOptions({
@@ -48,8 +66,12 @@ const Sidebar = () => {
       y: e.clientY,
       userId,
     });
-    setActiveMenuId('sidebar')
+    setActiveMenuId("sidebar");
   };
+
+  useEffect(() => {
+    getUsers();
+  }, [getUsers]);
 
   useEffect(() => {
     const handleClickOnOutside = () => {
@@ -59,11 +81,11 @@ const Sidebar = () => {
     return () => window.removeEventListener("click", handleClickOnOutside);
   }, []);
 
-  useEffect(()=>{
-    if(activeMenuId != 'sidebar'){
-      setMenuOptions(prev => ({...prev , show:false}))
+  useEffect(() => {
+    if (activeMenuId != "sidebar") {
+      setMenuOptions((prev) => ({ ...prev, show: false }));
     }
-  },[activeMenuId])
+  }, [activeMenuId]);
 
   return (
     <aside className="h-full w-20 lg:w-72 border-r border-base-300 flex flex-col transition-all duration-200">
@@ -98,50 +120,64 @@ const Sidebar = () => {
 
       {/* all users */}
       <div className="overflow-y-auto w-full py-3">
-        {filteredUsers.map((user) => (
-          <button
-            key={user._id}
-            onClick={() => setSelectedUser(user)}
-            onContextMenu={(e) => handleMenuOptions(e, user._id)}
-            onDoubleClick={(e) => handleMenuOptions(e, user._id)}
-            className={`
-              w-full p-3 flex items-center gap-3 hover:bg-base-300 transition-colors cursor-pointer
-              ${selectedUser?._id === user._id ? "bg-base-300 ring-1 ring-base-300" : ""}
-            `}
-          >
-            <div className="relative mx-auto lg:mx-0">
-              <img
-                src={user.profilePic || "/avatar.png"}
-                alt={user.name}
-                className="size-12 object-cover rounded-full"
-              />
-              {onlineUsers.includes(user._id) && (
-                <span
-                  className="absolute bottom-0 right-0 size-3 bg-green-500 
-                  rounded-full ring-2 ring-zinc-900"
+        {sortedUsers.map((user) => {
+          const isChatPinned = authUser?.pinnedChats?.includes(user._id);
+          return(
+            <button
+              key={user._id}
+              onClick={() => setSelectedUser(user)}
+              onContextMenu={(e) => handleMenuOptions(e, user._id)}
+              onDoubleClick={(e) => handleMenuOptions(e, user._id)}
+              className={`
+                w-full p-3 flex items-center gap-3 hover:bg-base-300 transition-colors cursor-pointer
+                ${selectedUser?._id === user._id ? "bg-base-300 ring-1 ring-base-300" : ""}
+              `}
+            >
+              <div className="relative mx-auto lg:mx-0">
+                <img
+                  src={user.profilePic || "/avatar.png"}
+                  alt={user.name}
+                  className="size-12 object-cover rounded-full"
                 />
-              )}
-            </div>
-
-            {/* User info - only visible on larger screens */}
-            <div className="hidden lg:block text-left min-w-0">
-              <div className="font-medium truncate">{user.fullName}</div>
-              <div className="text-sm text-zinc-400">
-                {typingUsers?.includes(user._id) ? (
-                  <span className="text-emerald-500 font-medium">
-                    Typing...
-                  </span>
-                ) : onlineUsers.includes(user._id) ? (
-                  "Online"
-                ) : (
-                  "Offline"
+                {onlineUsers.includes(user._id) && (
+                  <span
+                    className="absolute bottom-0 right-0 size-3 bg-green-500 
+                    rounded-full ring-2 ring-zinc-900"
+                  />
                 )}
               </div>
-            </div>
-          </button>
-        ))}
 
-        {filteredUsers.length === 0 && (
+              {/* User info - only visible on larger screens */}
+              <div className="hidden lg:block text-left min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-1">
+                  <div className="font-medium truncate flex-1">
+                    {user.fullName}
+                  </div>
+
+                  {isChatPinned && (
+                    <PinIcon
+                      size={14}
+                      className="text-primary fill-primary shrink-0 rotate-45"
+                    />
+                  )}
+                </div>
+                <div className="text-sm text-zinc-400">
+                  {typingUsers?.includes(user._id) ? (
+                    <span className="text-success font-medium">
+                      Typing...
+                    </span>
+                  ) : onlineUsers.includes(user._id) ? (
+                    "Online"
+                  ) : (
+                    "Offline"
+                  )}
+                </div>
+              </div>
+            </button>
+          )
+        })}
+
+        {sortedUsers.length === 0 && (
           <div className="text-center text-zinc-500 py-4">No online users</div>
         )}
       </div>
@@ -159,10 +195,11 @@ const Sidebar = () => {
           }}
         >
           <MenuOptionsBox
-            icon={Pin}
-            label="Pin"
+            icon={isSelectedContextMenuChatPinned ? PinOff : PinIcon}
+            label={isSelectedContextMenuChatPinned ? "Unpin Chat" : "Pin Chat"}
             onClick={() => {
-              setMenuOptions(prev => ({ ...prev, show: false }));
+              togglePinChat(menuOptions.userId);
+              setMenuOptions((prev) => ({ ...prev, show: false }));
             }}
           />
 
@@ -172,8 +209,8 @@ const Sidebar = () => {
             icon={Ban}
             label="Block"
             onClick={() => {
-              openModal('Block', menuOptions.userId);
-              setMenuOptions(prev => ({ ...prev, show: false }));
+              openModal("Block", menuOptions.userId);
+              setMenuOptions((prev) => ({ ...prev, show: false }));
             }}
           />
 
@@ -181,8 +218,8 @@ const Sidebar = () => {
             icon={MinusCircle}
             label="Clear Chat"
             onClick={() => {
-              openModal('ClearChat' , menuOptions.userId);
-              setMenuOptions(prev => ({ ...prev, show: false }));
+              openModal("ClearChat", menuOptions.userId);
+              setMenuOptions((prev) => ({ ...prev, show: false }));
             }}
           />
 
@@ -191,14 +228,13 @@ const Sidebar = () => {
             label="Delete Chat"
             className="text-error hover:bg-error/10"
             onClick={() => {
-              openModal('DeleteChat' , {
+              openModal("DeleteChat", {
                 targetId: menuOptions.userId,
-                targetType: "user"
+                targetType: "user",
               });
-              setMenuOptions(prev => ({ ...prev, show: false }));
+              setMenuOptions((prev) => ({ ...prev, show: false }));
             }}
           />
-
         </div>
       )}
     </aside>

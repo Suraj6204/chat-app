@@ -1,6 +1,6 @@
 import express from "express";
 import { protectRoute } from "../middleware/auth.middleware.js";
-import { deleteMessages, getMessages, getUsersForSidebar, sendMessage, clearChat } from "../controllers/message.controller.js";
+import { deleteMessages, getMessages, getUsersForSidebar, sendMessage, clearChat, togglePinChat } from "../controllers/message.controller.js";
 
 const router = express.Router();
 
@@ -12,6 +12,8 @@ router.post("/send/:id", protectRoute, sendMessage);
 router.post("/delete", protectRoute, deleteMessages);
 
 router.patch("/clear/:id", protectRoute, clearChat);
+
+router.patch("/pin/:id", protectRoute, togglePinChat);
 
 
 export default router;

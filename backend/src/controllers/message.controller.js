@@ -170,3 +170,33 @@ export const clearChat = async (req, res) => {
   }
 };
 
+export const togglePinChat = async (req, res) => {
+  try {
+    const { id: targetUserId } = req.params;
+    const myId = req.user._id;
+
+    const user = await User.findById(myId);
+    const isPinned = user.pinnedChats.includes(targetUserId);
+
+    let updatedUser;
+    if (isPinned) {
+      // Agar pehle se pinned hai toh unpin karo ($pull)
+      updatedUser = await User.findByIdAndUpdate(
+        myId,
+        { $pull: { pinnedChats: targetUserId } },
+        { new: true }
+      );
+    } else {
+      // Agar pinned nahi hai toh pin karo ($addToSet)
+      updatedUser = await User.findByIdAndUpdate(
+        myId,
+        { $addToSet: { pinnedChats: targetUserId } },
+        { new: true }
+      );
+    }
+    res.status(200).json(updatedUser);
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+

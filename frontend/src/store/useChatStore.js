@@ -252,16 +252,16 @@ export const useChatStore = create((set, get) => ({
     try {
       const { closeModal } = get();
       const socket = useAuthStore.getState().socket;
+
       const res = await axiosInstance.patch(`/auth/block/${userId}`);
-      // set((state) => ({
-        //     users: state.users.filter((u) => u._id !== userId),
-        // }));
       useAuthStore.getState().setAuthUser(res.data);
       toast.success("User blocked");
+
       if (!socket) return ;
       socket.emit("blockUserEvent", { blockedId: userId }); 
       closeModal();
-    } catch (error) {
+    } 
+    catch (error) {
       toast.error("Failed to block user");
     }
   },
@@ -281,6 +281,22 @@ export const useChatStore = create((set, get) => ({
     } 
     catch (error) {
       toast.error("Failed to unblock user");
+    }
+  },
+
+  togglePinChat: async (userId) => {
+    try{
+      const { closeModal } = get();
+      const res = await axiosInstance.patch(`/messages/pin/${userId}`);
+      useAuthStore.getState().setAuthUser(res.data);
+
+      const isPinned = res.data.pinnedChats.includes(userId);
+      toast.success(isPinned ? "Chat pinned" : "Chat unpinned");
+      
+      closeModal();
+    }
+    catch(error){
+      toast.error("Failed to update pin status");
     }
   },
 
