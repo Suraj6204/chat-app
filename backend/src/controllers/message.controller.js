@@ -22,6 +22,10 @@ export const getMessages = async (req, res) => {
     const userToChatId = req.params.id;
     const myId = req.user._id;
 
+    //check if block by them
+    const user = await User.findById(userToChatId)
+    const isBlockedByThem = user.blockedUsers.includes(myId);
+
     const messages = await Message.find({
       $or: [
         { senderId: myId, receiverId: userToChatId },
@@ -31,7 +35,7 @@ export const getMessages = async (req, res) => {
     }).populate("replyTo", "text image video senderId");
     //populate to give proper structure=> {text :"" , replyTo: {text : "" , image: "" , video: "" , senderId: ""}}
 
-    res.status(200).json(messages);
+    res.status(200).json( {messages , isBlockedByThem} );
   } catch (error) {
     console.error("Error in getMessages: ", error.message);
     res.status(500).json({ error: "Internal server error" });
@@ -165,3 +169,4 @@ export const clearChat = async (req, res) => {
     res.status(500).json({ success: false, error: "Internal server error" });
   }
 };
+

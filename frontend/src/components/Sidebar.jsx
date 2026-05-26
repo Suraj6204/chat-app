@@ -172,6 +172,7 @@ const Sidebar = () => {
             icon={Ban}
             label="Block"
             onClick={() => {
+              openModal('Block', menuOptions.userId);
               setMenuOptions(prev => ({ ...prev, show: false }));
             }}
           />

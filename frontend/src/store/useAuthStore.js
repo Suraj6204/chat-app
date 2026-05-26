@@ -146,4 +146,6 @@ export const useAuthStore = create((set, get) => ({
   },
 
   setTempEmail: (email) => set({ tempEmail: email }),
+  
+  setAuthUser: (user) => set({ authUser: user }),
 }));

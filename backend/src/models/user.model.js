@@ -22,17 +22,26 @@ const userSchema = new mongoose.Schema(
     },
     isVerified: {
       type: Boolean,
-      default: false
-    }
+      default: false,
+    },
+    blockedUsers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 //for removing unverified users in 24 hours from database
-userSchema.index({ createdAt: 1 }, { 
-  expireAfterSeconds: 86400, // 24 ghante
-  partialFilterExpression: { isVerified: false } 
-});
+userSchema.index(
+  { createdAt: 1 },
+  {
+    expireAfterSeconds: 86400, // 24 ghante
+    partialFilterExpression: { isVerified: false },
+  },
+);
 
 const User = mongoose.model("User", userSchema);
 

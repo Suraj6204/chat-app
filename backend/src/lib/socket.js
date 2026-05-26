@@ -96,6 +96,24 @@ io.on("connection" , (socket) => {
         //again gives updated users (removing disconnected users)
         io.emit("getOnlineUsers", Object.keys(userSocketMap));
     });
+
+    //block
+    socket.on("blockUserEvent", ({ blockedId }) => {
+        const receiverSocketId = getReceiverSocketId(blockedId);
+        if (receiverSocketId) {
+            // Samne wale user ko instantly notify karo ki use kisne block kiya hai
+            io.to(receiverSocketId).emit("userBlocked", { blockedById: userId });
+        }
+    });
+
+    // unblock
+    socket.on("unblockUserEvent", ({ unblockedId }) => {
+        const receiverSocketId = getReceiverSocketId(unblockedId);
+        if (receiverSocketId) {
+            // Samne wale user ko instantly notify karo ki use kisne unblock kiya hai
+            io.to(receiverSocketId).emit("userUnblocked", { unblockedById: userId });
+        }
+    });
 });
 
 export { io, app, server };

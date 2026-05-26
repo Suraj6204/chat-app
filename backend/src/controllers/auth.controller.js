@@ -209,3 +209,42 @@ export const verifyEmail = async (req, res) => {
         });
     }
 };
+
+
+export const blockUser = async (req, res) => {
+  try {
+    const { id: userToBlockId } = req.params;
+    const myId = req.user._id;
+
+    if (myId.toString() === userToBlockId) return res.status(400).json({ message: "You cannot block yourself" });
+
+    // Current user ke blockedUsers array mein ID add karo
+    const updatedUser = await User.findByIdAndUpdate(
+      myId, 
+      { $addToSet: { blockedUsers: userToBlockId } } , 
+      { new: true }
+    );
+
+    res.status(200).json(updatedUser);
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const unblockUser = async (req, res) => {
+  try {
+    const { id: userToUnblockId } = req.params;
+    const myId = req.user._id;
+
+    // $pull array se specific ID ko remove kar deta hai
+    const updatedUser = await User.findByIdAndUpdate(
+      myId, 
+      { $pull: { blockedUsers: userToUnblockId } }, 
+      { new: true }
+    );
+
+    res.status(200).json(updatedUser);
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error" });
+  }
+};

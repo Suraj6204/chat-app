@@ -12,6 +12,7 @@ export const useChatStore = create((set, get) => ({
   typingUsers: [], // stores array of user ids who are typing
   replyPreviewMessage: null,
   activeMenuId: null,
+  isBlockedByThem: false,
 
   //  Modal Logic (Multi-Select) - Delete / Forward
   isModalOpen: false,
@@ -33,12 +34,15 @@ export const useChatStore = create((set, get) => ({
   getMessages: async (userId) => {
     set({ isMessagesLoading: true });
     try {
-      //axios.get(url)
-      const res = await axiosInstance.get(`/messages/${userId}`);
-      set({ messages: res.data });
-      //res : {message : "" , senderId : "" , receiverId : ""}
+      const res = await axiosInstance.get(`/messages/${userId}`); //axios.get(url)
+      set({
+        messages: res.data.messages,
+        isBlockedByThem: res.data.isBlockedByThem,
+      }); //res : {message : "" , senderId : "" , receiverId : ""}
     } catch (error) {
-      toast.error(error.response.data.message);
+      toast.error(error?.response?.data?.message || "Unable to load messages", {
+        id: "message-error",
+      }); //give id for 1 time only error show
     } finally {
       set({ isMessagesLoading: false });
     }
@@ -193,7 +197,7 @@ export const useChatStore = create((set, get) => ({
 
   clearChat: async (targetUserId) => {
     try {
-      const {selectedUser , messages , closeModal} = get();
+      const { selectedUser, messages, closeModal } = get();
       await axiosInstance.patch(`/messages/clear/${targetUserId}`);
 
       // Agar current open chat hi clear hui hai, toh local state se messages khali karo
@@ -238,10 +242,45 @@ export const useChatStore = create((set, get) => ({
 
       toast.success("Chat deleted successfully");
       closeModal();
-    } 
-    catch (error) {
+    } catch (error) {
       console.error(error);
       toast.error("Failed to delete chat");
+    }
+  },
+
+  blockUser: async (userId) => {
+    try {
+      const { closeModal } = get();
+      const socket = useAuthStore.getState().socket;
+      const res = await axiosInstance.patch(`/auth/block/${userId}`);
+      // set((state) => ({
+        //     users: state.users.filter((u) => u._id !== userId),
+        // }));
+      useAuthStore.getState().setAuthUser(res.data);
+      toast.success("User blocked");
+      if (!socket) return ;
+      socket.emit("blockUserEvent", { blockedId: userId }); 
+      closeModal();
+    } catch (error) {
+      toast.error("Failed to block user");
+    }
+  },
+
+  unblockUser: async (userId) => {
+    try {
+      const { closeModal, authUser } = get();
+      const socket = useAuthStore.getState().socket;
+
+      const res = await axiosInstance.patch(`/auth/unblock/${userId}`);
+      useAuthStore.getState().setAuthUser(res.data);
+      toast.success("User unblocked");
+
+      if (!socket) return;
+      socket.emit("unblockUserEvent", { unblockedId: userId });
+      closeModal();
+    } 
+    catch (error) {
+      toast.error("Failed to unblock user");
     }
   },
 
@@ -288,6 +327,22 @@ export const useChatStore = create((set, get) => ({
       );
       set({ messages: liveUpdate });
     });
+
+    socket.on("userBlocked", ({ blockedById }) => {
+      const { selectedUser } = get();
+
+      if (blockedById === selectedUser?._id) {
+        set({isBlockedByThem: true});
+      }
+    });
+
+    socket.on("userUnblocked", ({ unblockedById }) => {
+      const { selectedUser } = get();
+
+      if (unblockedById === selectedUser?._id) {
+        set({isBlockedByThem: false});
+      }
+    });
   },
 
   unsubscribeFromMessages: () => {
@@ -296,5 +351,7 @@ export const useChatStore = create((set, get) => ({
     socket.off("displayTyping");
     socket.off("hideTyping");
     socket.off("messagesDeletedEveryone");
+    socket.off("userBlocked");
+    socket.off("userUnblocked");
   },
 }));

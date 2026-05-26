@@ -24,6 +24,8 @@ const HomePage = () => {
     executeForward,
     clearChat,
     deleteChat,
+    blockUser,
+    unblockUser
   } = useChatStore();
 
   const { initCallListeners } = useCallStore();
@@ -61,7 +63,7 @@ const HomePage = () => {
     ClearChat: {
       title: "Clear this chat?",
       confirmText: "Clear chat",
-      actionType: "delete",
+      actionType: "Delete",
       showDeleteEveryone: false,
       onConfirmMe: () =>  clearChat(modalData),
       onConfirmEveryone: null,
@@ -69,11 +71,27 @@ const HomePage = () => {
     DeleteChat: {
       title: "Delete this entire chat?",
       confirmText: "Delete chat",
-      actionType: "delete",
+      actionType: "Delete",
       showDeleteEveryone: false,
       onConfirmMe: () => deleteChat(),
       onConfirmEveryone: null,
     },
+    Block: {
+      title: "Block this user?",
+      confirmText: "Block",
+      actionType: "Delete", // Red color button ke liye
+      showDeleteEveryone: false,
+      onConfirmMe: () => { blockUser(modalData); },
+      onConfirmEveryone: null
+    },
+    Unblock: {
+      title: "Unblock this user?",
+      confirmText: "Unblock",
+      actionType: "primary", // Red color button ke liye
+      showDeleteEveryone: false,
+      onConfirmMe: () => { unblockUser(modalData); },
+      onConfirmEveryone: null
+    }
   };
 
   const currentConfig = modalConfig[modalType] || {};

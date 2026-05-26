@@ -27,8 +27,8 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirmMe, onConfirmEveryone, ti
           <button
             onClick={onConfirmMe}
             className={`btn btn-sm rounded-full px-5 font-semibold normal-case tracking-wide shadow-md ${
-              actionType === 'Delete' 
-                ? 'bg-success text-black hover:bg-success/90 border-none' 
+              actionType === 'Delete'
+                ? 'bg-error text-black hover:bg-error/90 border-none' 
                 : 'btn-primary'
             }`}
           >
