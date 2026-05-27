@@ -1,6 +1,7 @@
 import { THEMES } from "../constants";
 import { useThemeStore } from "../store/useThemeStore";
-import { Send } from "lucide-react";
+import { ArrowLeft, Send } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const PREVIEW_MESSAGES = [
   { id: 1, content: "Hey! How's it going?", isSent: false },
@@ -9,9 +10,15 @@ const PREVIEW_MESSAGES = [
 
 const SettingsPage = () => {
   const { theme, setTheme } = useThemeStore();
+  const navigate = useNavigate();
 
   return (
-    <div className="h-screen container mx-auto px-4 pt-20 max-w-5xl">
+    <>
+    <div className="h-screen container mx-auto px-4 pt-24 max-w-5xl relative">
+      <button onClick={() => navigate(-1)} className="absolute top-6 -left-4 w-10 h-10 flex items-center justify-center bg-base-200 border border-base-300 shadow-md rounded-full hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer z-10 ">
+        <ArrowLeft size = {24} />
+      </button>
+
       <div className="space-y-6">
         <div className="flex flex-col gap-1">
           <h2 className="text-lg font-semibold">Theme</h2>
@@ -111,6 +118,7 @@ const SettingsPage = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 export default SettingsPage;

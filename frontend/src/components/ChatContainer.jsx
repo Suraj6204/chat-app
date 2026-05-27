@@ -438,7 +438,10 @@ const ChatContainer = () => {
             <>
               <div className="flex gap-4">
                 <button
-                  onClick={() => openModal("DeleteChat", selectedUser._id)}
+                  onClick={() => openModal("DeleteChat", {
+                    targetId: selectedUser?._id,
+                    targetType: "user",
+                  })}
                   className="btn btn-md text-error hover:bg-error hover:text-error-content border border-error rounded-full"
                 >
                   <Trash size={22} />

@@ -129,7 +129,7 @@ const Sidebar = () => {
               onContextMenu={(e) => handleMenuOptions(e, user._id)}
               onDoubleClick={(e) => handleMenuOptions(e, user._id)}
               className={`
-                w-full p-3 flex items-center gap-3 hover:bg-base-300 transition-colors cursor-pointer
+                mt-1 rounded-md w-full p-3 flex items-center gap-3 hover:bg-base-300 transition-colors cursor-pointer
                 ${selectedUser?._id === user._id ? "bg-base-300 ring-1 ring-base-300" : ""}
               `}
             >
