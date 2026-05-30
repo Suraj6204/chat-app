@@ -10,7 +10,7 @@ const Navbar = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   // Consider "light" as the light mode, anything else as dark (e.g., "coffee")
-  const isDark = theme !== "light";
+  const isDark = theme !== "retro";
 
   const closeDrawer = () => {
     const drawer = document.getElementById("my-drawer");
@@ -18,7 +18,7 @@ const Navbar = () => {
   };
 
   const toggleTheme = () => {
-    setTheme(isDark ? "light" : "coffee");
+    setTheme(isDark ? "retro" : "coffee");
   };
 
   const handleLogout = () => {
@@ -117,7 +117,7 @@ const Navbar = () => {
                     className="px-6 py-3 hover:bg-base-300/50 rounded-none flex items-center justify-between w-full transition-colors"
                   >
                     <div className="flex items-center gap-5">
-                      {isDark ? <Moon className="size-[22px] text-base-content/60" /> : <Sun className="size-[22px] text-base-content/60" />}
+                      {isDark ? <Moon className="size-5.5 text-base-content/60" /> : <Sun className="size-5.5 text-base-content/60" />}
                       <span>Night Mode</span>
                     </div>
                     <div className="form-control">

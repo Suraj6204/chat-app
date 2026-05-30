@@ -13,7 +13,6 @@ const SettingsPage = () => {
   const navigate = useNavigate();
 
   return (
-    <>
     <div className="h-screen container mx-auto px-4 pt-24 max-w-5xl relative">
       <button onClick={() => navigate(-1)} className="absolute top-6 -left-4 w-10 h-10 flex items-center justify-center bg-base-200 border border-base-300 shadow-md rounded-full hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer z-10 ">
         <ArrowLeft size = {24} />
@@ -118,7 +117,6 @@ const SettingsPage = () => {
         </div>
       </div>
     </div>
-    </>
   );
 };
 export default SettingsPage;
