@@ -446,6 +446,36 @@ export const useChatStore = create((set, get) => ({
 
   unsubscribeFromGroupUpdates: () => {
     const socket = useAuthStore.getState().socket;
+    if(!socket) return;
     socket.off("addNewGroupToSidebar");
   },
+
+  subscribeToGroupMessages: () => {
+    const socket = useAuthStore.getState().socket;
+    if(!socket) return;
+
+    socket.off("newGroupMessage");
+    socket.on("newGroupMessage" , ({message , groupId}) => {
+      console.log("📩 Real-time Group Message Received:", message);
+      const { selectedUser, messages } = get();
+      const incomingSenderId = message.senderId?._id || message.senderId;
+      if (
+        selectedUser?.isGroup && 
+        selectedUser._id === groupId && 
+        incomingSenderId !== useAuthStore.getState().authUser?._id
+      ) {
+        set({
+          messages: [...messages, message],
+        });
+      }
+
+    })
+  },
+
+  unsubscribeFromGroupMessages: () => {
+    const socket = useAuthStore.getState().socket;
+    if(!socket) return;
+    socket.off("newGroupMessage");
+  }
+
 }));

@@ -33,6 +33,8 @@ const ChatContainer = () => {
     setActiveMenuId,
     unblockUser,
     isBlockedByThem,
+    subscribeToGroupMessages,
+    unsubscribeFromGroupMessages,
   } = useChatStore();
 
   const { authUser, setAuthUser } = useAuthStore();
@@ -52,6 +54,10 @@ const ChatContainer = () => {
   const [selectedMessageIds, setSelectedMessageIds] = useState([]);
   const [actionMode, setActionMode] = useState(null);
   const [highlightedMessageId, setHighlightedMessageId] = useState(null);
+
+  const getSenderId = (sender) => sender?._id || sender;
+  const isOwnMessage = (message) =>
+    getSenderId(message?.senderId) === authUser?._id;
 
   const handleScroll = () => {
     if (scrollContainerRef.current) {
@@ -138,7 +144,7 @@ const ChatContainer = () => {
   //isBlockedByThem -   //me jisse blocked hua hu (you are blocked)
   // isko hmesa backend se lo , taki user ko pata na chale samne wala ar kis kis ko block kiya h
 
-  const isBlocked = isBlockedByMe || isBlockedByThem; 
+  const isBlocked = isBlockedByMe || isBlockedByThem;
   useEffect(() => {
     const handleClickOnOutside = () => {
       setMenuOptions((prev) => ({ ...prev, show: false }));
@@ -148,7 +154,7 @@ const ChatContainer = () => {
   }, []);
 
   useEffect(() => {
-    getMessages(selectedUser._id , selectedUser.isGroup);
+    getMessages(selectedUser._id, selectedUser.isGroup);
     subscribeToMessages();
     return () => unsubscribeFromMessages();
   }, [
@@ -157,12 +163,23 @@ const ChatContainer = () => {
     getMessages,
     subscribeToMessages,
     unsubscribeFromMessages,
-    authUser
+    authUser,
   ]);
 
   useEffect(() => {
+    if (!selectedUser) return;
+    if (selectedUser.isGroup) {
+      subscribeToGroupMessages();
+    }
+    // Cleanup: Jab chat window change ho ya component unmount ho, toh listener off kar do
+    return () => {
+      unsubscribeFromGroupMessages();
+    };
+  }, [selectedUser, subscribeToGroupMessages, unsubscribeFromGroupMessages]);
+
+  useEffect(() => {
     const lastMessage = messages?.[messages.length - 1];
-    const isMyMessage = lastMessage?.senderId === authUser._id;
+    const isMyMessage = isOwnMessage(lastMessage);
 
     if (!isScrolledUp || isMyMessage) {
       scrollToBottom();
@@ -229,15 +246,17 @@ const ChatContainer = () => {
 
             {/* Standard DaisyUI Message Layout */}
             <div
-              className={`chat flex-1 ${message.senderId === authUser._id ? "chat-end" : "chat-start"}`}
+              className={`chat flex-1 ${isOwnMessage(message) ? "chat-end" : "chat-start"}`}
             >
               <div className="chat-image avatar">
                 <div className="size-10 rounded-full border">
                   <img
                     src={
-                      message.senderId === authUser._id
+                      isOwnMessage(message)
                         ? authUser.profilePic || "/avatar.png"
-                        : selectedUser.profilePic || "/avatar.png"
+                        : message.senderId?.profilePic ||
+                          selectedUser.profilePic ||
+                          "/avatar.png"
                     }
                     alt="profile pic"
                   />
@@ -256,7 +275,7 @@ const ChatContainer = () => {
                 className={`chat-bubble flex flex-col  ${
                   message.isDeletedEveryone
                     ? "bg-base-300/70 text-base-content/40 italic shadow-none cursor-default"
-                    : message.senderId === authUser._id
+                    : isOwnMessage(message)
                       ? "chat-bubble-primary cursor-pointer"
                       : "bg-base-200 text-base-content cursor-pointer"
                 }`}
@@ -279,19 +298,20 @@ const ChatContainer = () => {
                           handleScrollToParentMessage(message.replyTo._id);
                         }}
                         className={`mb-2 p-2 rounded-lg border-l-4 text-xs cursor-pointer transition-all flex flex-col gap-0.5 max-w-full select-none ${
-                          message.senderId === authUser._id
+                          isOwnMessage(message)
                             ? "bg-primary-focus/30 border-white text-white/90 hover:bg-primary-focus/45"
                             : "bg-base-300/60 border-primary text-base-content/90 hover:bg-base-300/90"
                         }`}
                       >
                         <span
                           className={`font-semibold ${
-                            message.senderId === authUser._id
+                            isOwnMessage(message)
                               ? "text-white"
                               : "text-primary"
                           }`}
                         >
-                          {message.replyTo.senderId === authUser._id
+                          {getSenderId(message.replyTo.senderId) ===
+                          authUser._id
                             ? "You"
                             : selectedUser?.fullName || "User"}
                         </span>
@@ -439,10 +459,12 @@ const ChatContainer = () => {
             <>
               <div className="flex gap-4">
                 <button
-                  onClick={() => openModal("DeleteChat", {
-                    targetId: selectedUser?._id,
-                    targetType: "user",
-                  })}
+                  onClick={() =>
+                    openModal("DeleteChat", {
+                      targetId: selectedUser?._id,
+                      targetType: "user",
+                    })
+                  }
                   className="btn btn-md text-error hover:bg-error hover:text-error-content border border-error rounded-full"
                 >
                   <Trash size={22} />
@@ -463,8 +485,7 @@ const ChatContainer = () => {
               <Ban size={18} />
               <span>You are blocked!</span>
             </div>
-          ) : null
-          }
+          ) : null}
         </div>
       ) : isSelectionMode ? (
         <SelectionActionBar

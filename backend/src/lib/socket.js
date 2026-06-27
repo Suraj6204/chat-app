@@ -115,9 +115,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  // ==========================================
-  // 👥 GROUP MANAGEMENT & ROOM BINDINGS
-  // ==========================================
+  // use GROUP MANAGEMENT & ROOM BINDINGS
 
   // 1. Existing: Join all previous groups rooms on startup
   socket.on("joinGroupRooms", ({ groupIds }) => {
