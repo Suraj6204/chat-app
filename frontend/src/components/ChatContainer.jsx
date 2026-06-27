@@ -148,11 +148,12 @@ const ChatContainer = () => {
   }, []);
 
   useEffect(() => {
-    getMessages(selectedUser._id);
+    getMessages(selectedUser._id , selectedUser.isGroup);
     subscribeToMessages();
     return () => unsubscribeFromMessages();
   }, [
     selectedUser._id,
+    selectedUser.isGroup,
     getMessages,
     subscribeToMessages,
     unsubscribeFromMessages,

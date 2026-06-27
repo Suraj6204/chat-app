@@ -2,10 +2,12 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuthStore } from "../store/useAuthStore";
 import { useThemeStore } from "../store/useThemeStore";
-import { LogOut, MessageSquare, Menu, Palette, Moon, Sun, ChevronDown, User, Settings } from "lucide-react";
+import { useChatStore } from "../store/useChatStore";
+import { LogOut, MessageSquare, Menu, Palette, Moon, Sun, ChevronDown, User, Settings, Users } from "lucide-react";
 
 const Navbar = () => {
   const { logout, authUser } = useAuthStore();
+  const { openModal } = useChatStore();
   const { theme, setTheme } = useThemeStore();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
@@ -98,18 +100,27 @@ const Navbar = () => {
                     Chat
                   </Link>
                 </li>
+
                 <li>
                   <Link 
                     to="/settings" 
                     onClick={closeDrawer}
                     className="px-6 py-3 hover:bg-base-300/50 rounded-none flex items-center gap-5 transition-colors"
                   >
-                    <Palette className="size-[22px] text-base-content/60" />
+                    <Palette className="size-5.5 text-base-content/60" />
                     Themes
                   </Link>
                 </li>
+
+                <button 
+                  onClick={() => openModal("Forward", "CreateGroup")}
+                  className="px-6 py-3 hover:bg-base-300/50 rounded-none flex items-center gap-5 transition-colors"
+                >
+                  <Users className="size-5.5 text-base-content/60" />
+                  New Group
+                </button>
                 
-                <div className="h-[1px] bg-base-300 w-full my-2"></div>
+                <div className="h-px bg-base-300 w-full my-2"></div>
                 
                 <li>
                   <button 

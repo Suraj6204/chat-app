@@ -17,15 +17,24 @@ export const getUsersForSidebar = async (req, res) => {
   }
 };
 
+/*postgress-
+  const filteredUsers = await sql`
+    SELECT id, name, email
+    FROM users
+    WHERE id != ${loggedInUserId};
+  `;
+ */
+
 export const getMessages = async (req, res) => {
   try {
     const userToChatId = req.params.id;
     const myId = req.user._id;
 
     //check if block by them
-    const user = await User.findById(userToChatId)
+    const user = await User.findById(userToChatId);
     const isBlockedByThem = user.blockedUsers.includes(myId);
 
+    //both users
     const messages = await Message.find({
       $or: [
         { senderId: myId, receiverId: userToChatId },
@@ -35,17 +44,38 @@ export const getMessages = async (req, res) => {
     }).populate("replyTo", "text image video senderId");
     //populate to give proper structure=> {text :"" , replyTo: {text : "" , image: "" , video: "" , senderId: ""}}
 
-    res.status(200).json( {messages , isBlockedByThem} );
+    res.status(200).json({ messages, isBlockedByThem });
   } catch (error) {
     console.error("Error in getMessages: ", error.message);
     res.status(500).json({ error: "Internal server error" });
   }
 };
 
+/*postgress-
+const messages = await sql`
+  SELECT
+    m.*,
+    r.text     AS reply_text,
+    r.image    AS reply_image,
+    r.video    AS reply_video,
+    r.sender_id AS reply_sender_id
+  FROM messages m
+  LEFT JOIN messages r
+  ON m.reply_to = r.id
+  WHERE (
+      (m.sender_id = ${myId} AND m.receiver_id = ${userToChatId})
+      OR
+      (m.sender_id = ${userToChatId} AND m.receiver_id = ${myId})
+  )
+  AND NOT (${myId} = ANY(m.deleted_by))   // to exclude any thing inside array
+  ORDER BY m.created_at;
+`;   
+*/
+
 export const sendMessage = async (req, res) => {
   // :/receiverId
   try {
-    const { text, image, video, replyTo } = req.body;
+    const { text, image, video, replyTo, conversationType } = req.body;
     const senderId = req.user._id;
     const { id: receiverId } = req.params;
 
@@ -70,6 +100,7 @@ export const sendMessage = async (req, res) => {
     const newMessage = new Message({
       senderId,
       receiverId,
+      conversationType: conversationType || "peer",
       text,
       image: imageUrl,
       video: videoUrl,
@@ -82,9 +113,16 @@ export const sendMessage = async (req, res) => {
       "text image video senderId",
     );
 
-    const receiverSocketId = getReceiverSocketId(receiverId);
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("newMessage", populatedMessage);
+    if (conversationType === "group") {
+      io.to(`group:${receiverId}`).emit("newGroupMessage", {
+        message: populatedMessage,
+        groupId: receiverId,
+      });
+    } else {
+      const receiverSocketId = getReceiverSocketId(receiverId);
+      if (receiverSocketId) {
+        io.to(receiverSocketId).emit("newMessage", populatedMessage);
+      }
     }
 
     res.status(201).json(populatedMessage);
@@ -184,14 +222,14 @@ export const togglePinChat = async (req, res) => {
       updatedUser = await User.findByIdAndUpdate(
         myId,
         { $pull: { pinnedChats: targetUserId } },
-        { new: true }
+        { new: true },
       );
     } else {
       // Agar pinned nahi hai toh pin karo ($addToSet)
       updatedUser = await User.findByIdAndUpdate(
         myId,
         { $addToSet: { pinnedChats: targetUserId } },
-        { new: true }
+        { new: true },
       );
     }
     res.status(200).json(updatedUser);
@@ -199,4 +237,3 @@ export const togglePinChat = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
-

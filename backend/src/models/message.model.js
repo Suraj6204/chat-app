@@ -7,18 +7,25 @@ const messageSchema = new mongoose.Schema(
             ref: "User",
             required: true,
         },
+        conversationType: {
+            type: String,
+            enum: ["peer", "group"],
+            default: "peer",
+            required: true
+        },
         receiverId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
             required: true,
+            // Agar conversationType 'peer' hai toh 'User' model ref hoga, agar 'group' hai toh 'Group' model ref hoga
+            refPath: "conversationType" 
         },
-        text:{
-            type:String
+        text: {
+            type: String
         },
-        image:{
-            type:String
+        image: {
+            type: String
         },
-        video:{
+        video: {
             type: String
         },
         deletedBy: [{ 
@@ -29,7 +36,7 @@ const messageSchema = new mongoose.Schema(
             type: Boolean,
             default: false
         },
-        replyTo:{
+        replyTo: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Message",
             default: null
@@ -37,6 +44,9 @@ const messageSchema = new mongoose.Schema(
     },
     { timestamps: true }
 );
+
+mongoose.model("peer", mongoose.model("User").schema); 
+// (Ensure karna ki Group model isse pehle compile/import ho chuka ho server initialization pipeline mein)
 
 const Message = mongoose.model("Message", messageSchema);
 export default Message;

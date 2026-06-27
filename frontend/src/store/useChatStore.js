@@ -19,6 +19,10 @@ export const useChatStore = create((set, get) => ({
   modalType: null, // 'Delete' ya 'Forward'
   modalData: [],
 
+  //groups
+  groups: [],
+  isGroupsLoading: false,
+
   getUsers: async () => {
     //userId pass krne ka jrurt nhi hai , req.user se mil jata hai automatic                set({ isUsersLoading: true });
     try {
@@ -31,14 +35,26 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
-  getMessages: async (userId) => {
+  getMessages: async (userId, isGroup = false) => {
     set({ isMessagesLoading: true });
     try {
-      const res = await axiosInstance.get(`/messages/${userId}`); //axios.get(url)
-      set({
-        messages: res.data.messages,
-        isBlockedByThem: res.data.isBlockedByThem,
-      }); //res : {message : "" , senderId : "" , receiverId : ""}
+      const endpoint = isGroup
+        ? `/groups/messages/${userId}`
+        : `/messages/${userId}`;
+
+      const res = await axiosInstance.get(endpoint); //axios.get(url)
+
+      if (isGroup) {
+        set({
+          messages: res.data,
+          isBlockedByThem: false, // Groups mein individual blocking trigger nahi hoti
+        });
+      } else {
+        set({
+          messages: res.data.messages,
+          isBlockedByThem: res.data.isBlockedByThem,
+        }); //res : {message : "" , senderId : "" , receiverId : ""}
+      }
     } catch (error) {
       toast.error(error?.response?.data?.message || "Unable to load messages", {
         id: "message-error",
@@ -53,19 +69,18 @@ export const useChatStore = create((set, get) => ({
   setReplyPreviewMessage: (message) => set({ replyPreviewMessage: message }),
   clearReplyPreviewMessage: () => set({ replyPreviewMessage: null }),
 
-  //it sends replied and normal messages
+  //it sends replied and normal messages and group msg
   sendMessage: async (messageData) => {
     //messageData - {text , image , video}
     const { selectedUser, replyPreviewMessage, messages } = get();
     try {
       const payload = {
         ...messageData,
+        conversationType: selectedUser?.isGroup ? "group" : "peer",
         replyTo: replyPreviewMessage ? replyPreviewMessage._id : null, // 🔥 Append target reply reference id
       };
-      const res = await axiosInstance.post(
-        `/messages/send/${selectedUser._id}`,
-        payload,
-      );
+
+      const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, payload);
 
       set({ messages: [...messages, res.data], replyPreviewMessage: null });
     } catch (error) {
@@ -170,6 +185,7 @@ export const useChatStore = create((set, get) => ({
             text: msg.text || "",
             image: msg.image || null,
             video: msg.video || null,
+            conversationType: selectedUser?.isGroup ? "group" : "peer",
           };
           const res = await axiosInstance.post(
             `/messages/send/${targetUserId}`,
@@ -257,11 +273,10 @@ export const useChatStore = create((set, get) => ({
       useAuthStore.getState().setAuthUser(res.data);
       toast.success("User blocked");
 
-      if (!socket) return ;
-      socket.emit("blockUserEvent", { blockedId: userId }); 
+      if (!socket) return;
+      socket.emit("blockUserEvent", { blockedId: userId });
       closeModal();
-    } 
-    catch (error) {
+    } catch (error) {
       toast.error("Failed to block user");
     }
   },
@@ -278,44 +293,72 @@ export const useChatStore = create((set, get) => ({
       if (!socket) return;
       socket.emit("unblockUserEvent", { unblockedId: userId });
       closeModal();
-    } 
-    catch (error) {
+    } catch (error) {
       toast.error("Failed to unblock user");
     }
   },
 
   togglePinChat: async (userId) => {
-    try{
+    try {
       const { closeModal } = get();
       const res = await axiosInstance.patch(`/messages/pin/${userId}`);
       useAuthStore.getState().setAuthUser(res.data);
 
       const isPinned = res.data.pinnedChats.includes(userId);
       toast.success(isPinned ? "Chat pinned" : "Chat unpinned");
-      
+
       closeModal();
-    }
-    catch(error){
+    } catch (error) {
       toast.error("Failed to update pin status");
+    }
+  },
+
+  getMyGroups: async () => {
+    set({ isGroupsLoading: true });
+    try {
+      const res = await axiosInstance.get("/groups/my-groups");
+      set({ groups: res.data });
+
+      //real time group formation , emit groupIds
+      const socket = useAuthStore.getState().socket;
+      if (socket && res.data.length > 0) {
+        const groupIds = res.data.map((g) => g._id); // { [_id: "g1",name: "Developers"] , [_id: "g2", name: "Designers"]}
+        socket.emit("joinGroupRooms", { groupIds });
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to fetch groups");
+    } finally {
+      set({ isGroupsLoading: false });
+    }
+  },
+
+  createNewGroup: async (groupData) => {
+    try {
+      const { closeModal } = get();
+      const res = await axiosInstance.post("/groups/create", groupData);
+      set((state) => ({ groups: [...state.groups, res.data] }));
+      toast.success("Group created successfully");
+
+      //real time group formation , emit new group id
+      const socket = useAuthStore.getState().socket;
+      if(socket) {
+        // socket.emit("newGroupCreated", { groupId: res.data._id }); // {_id: "g1", name: "Developers",members: [...] }
+        socket.emit("newGroupCreated", { 
+          memberIds: groupData.memberIds, // selected user ids array
+          groupData: res.data            // populated group document from backend
+        });
+      }
+      closeModal();
+    } catch (error) {
+      console.log("Error creating group:", error);
+      toast.error(error.response?.data?.message || "Failed to create group");
     }
   },
 
   subscribeToMessages: () => {
     //Receiveing
-    const { selectedUser } = get();
-    if (!selectedUser) return;
-
     const socket = useAuthStore.getState().socket;
-
-    socket.on("newMessage", (newMessage) => {
-      const isMessageSentFromSelectedUser =
-        newMessage.senderId === selectedUser._id;
-      if (!isMessageSentFromSelectedUser) return;
-
-      set({
-        messages: [...get().messages, newMessage],
-      });
-    });
+    if(!socket) return;
 
     socket.on("displayTyping", ({ senderId }) => {
       set((state) => ({
@@ -327,6 +370,35 @@ export const useChatStore = create((set, get) => ({
       set((state) => ({
         typingUsers: state.typingUsers.filter((id) => id !== senderId),
       }));
+    });
+
+    socket.on("userBlocked", ({ blockedById }) => {
+      const { selectedUser } = get();
+
+      if (blockedById === selectedUser?._id) {
+        set({ isBlockedByThem: true });
+      }
+    });
+
+    socket.on("userUnblocked", ({ unblockedById }) => {
+      const { selectedUser } = get();
+
+      if (unblockedById === selectedUser?._id) {
+        set({ isBlockedByThem: false });
+      }
+    });
+
+    const { selectedUser } = get();
+    if(!selectedUser) return;
+
+    socket.on("newMessage", (newMessage) => {
+      const isMessageSentFromSelectedUser =
+        newMessage.senderId === selectedUser._id;
+      if (!isMessageSentFromSelectedUser) return;
+
+      set({
+        messages: [...get().messages, newMessage],
+      });
     });
 
     socket.on("messagesDeletedEveryone", (deletedMessageIds) => {
@@ -343,22 +415,6 @@ export const useChatStore = create((set, get) => ({
       );
       set({ messages: liveUpdate });
     });
-
-    socket.on("userBlocked", ({ blockedById }) => {
-      const { selectedUser } = get();
-
-      if (blockedById === selectedUser?._id) {
-        set({isBlockedByThem: true});
-      }
-    });
-
-    socket.on("userUnblocked", ({ unblockedById }) => {
-      const { selectedUser } = get();
-
-      if (unblockedById === selectedUser?._id) {
-        set({isBlockedByThem: false});
-      }
-    });
   },
 
   unsubscribeFromMessages: () => {
@@ -369,5 +425,27 @@ export const useChatStore = create((set, get) => ({
     socket.off("messagesDeletedEveryone");
     socket.off("userBlocked");
     socket.off("userUnblocked");
+  },
+
+  subscribeToGroupUpdates: () => {
+    const socket = useAuthStore.getState().socket;
+    if (!socket) return;
+
+    socket.off("addNewGroupToSidebar");
+    socket.on("addNewGroupToSidebar", (groupData) => {
+      if (!groupData || !groupData._id) return;
+
+      const { groups } = get();
+      const isAlreadyAdded = groups.some((g) => g._id === groupData._id);
+
+      if (!isAlreadyAdded) {
+        set({ groups: [...groups, groupData] });
+      }
+    });
+  },
+
+  unsubscribeFromGroupUpdates: () => {
+    const socket = useAuthStore.getState().socket;
+    socket.off("addNewGroupToSidebar");
   },
 }));

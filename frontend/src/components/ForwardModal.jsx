@@ -1,11 +1,11 @@
 // modal to select users to forward messages
 import { useState } from 'react';
-import { X, Search } from 'lucide-react';
+import { X, Search, ArrowRight } from 'lucide-react';
 import { useChatStore } from '../store/useChatStore';
 import { useAuthStore } from '../store/useAuthStore';
 
 const ForwardModal = () => {
-  const { isModalOpen, modalType, closeModal, users, executeForward } = useChatStore();
+  const { isModalOpen, modalType, modalData ,openModal , closeModal, users, executeForward } = useChatStore();
   const { authUser } = useAuthStore();
   
   const [searchQuery, setSearchQuery] = useState("");
@@ -13,6 +13,7 @@ const ForwardModal = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isModalOpen || modalType !== 'Forward') return null;
+  const isGroupContext = modalData === "CreateGroup";
 
   // Toggle selected users for multiple forward support
   const handleToggleUser = (userId) => {
@@ -28,10 +29,16 @@ const ForwardModal = () => {
 
   const handleForwardSubmit = async () => {
     if (selectedUserIds.length === 0) return;
-    setIsSubmitting(true);
-    await executeForward(selectedUserIds);
-    setIsSubmitting(false);
-    setSelectedUserIds([]);
+ 
+    if (isGroupContext) {
+      openModal("GroupDetails", selectedUserIds);
+    } 
+    else {
+      setIsSubmitting(true);
+      await executeForward(selectedUserIds);
+      setIsSubmitting(false);
+      setSelectedUserIds([]);
+    }
   };
 
   return (
@@ -49,7 +56,9 @@ const ForwardModal = () => {
             >
               <X size={20} />
             </button>
-            <h3 className="text-lg font-semibold text-base-content">Forward message to</h3>
+            <h3 className="text-lg font-semibold text-base-content">
+              {isGroupContext ? "Add group members" : "Forward message to"}
+            </h3>
           </div>
         </div>
 
@@ -132,7 +141,11 @@ const ForwardModal = () => {
               disabled={isSubmitting}
               className="btn btn-sm btn-primary rounded-full px-6 font-semibold"
             >
-              {isSubmitting ? "Forwarding..." : "Forward"}
+              {isGroupContext ? (
+                <><span>Next</span><ArrowRight size={16} /></>
+              ) : (
+                <span>{isSubmitting ? "Forwarding..." : "Forward"}</span>
+              )}
             </button>
           </div>
         )}

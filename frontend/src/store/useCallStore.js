@@ -28,6 +28,7 @@ export const useCallStore = create((set, get) => ({
   // 1. Camera aur Mic ka access lena 
   getMediaStream: async (type) => {
     try {
+      const { stream , callType} = get();
       console.log("1. Requesting Camera/Mic permission...");
       
       const currentStream = await navigator.mediaDevices.getUserMedia({
@@ -50,20 +51,23 @@ export const useCallStore = create((set, get) => ({
   callUser: async (userToCall, type, callerName) => {
     const stream = await get().getMediaStream(type);
     if (!stream) return;
+
     const socket = useAuthStore.getState().socket;
     if (!socket) return toast.error("Socket not connected!");
     const authUser = useAuthStore.getState().authUser;
 
     const peer = new Peer({ 
       initiator: true, 
-      trickle: false, 
-      stream,
+      trickle: false,  // first collect all ICE candidates, then send offer + all Ice candidates
+      stream,          //sending my camera/mic stream to receiver
       ...iceServersConfig 
     });
 
-    peer.on("signal", (data) => {
+    peer.on("signal", (data) => { //signal - to generate signalling data (offer + ice candidates)
+      console.log(data);  //on calling => data = type: offer + ice candidate
+      
       socket.emit("callUser", {
-        userToCall,
+        userToCall,  //jisko call kar rhe uski userId
         signalData: data,
         from: authUser._id,
         name: callerName,
@@ -72,11 +76,13 @@ export const useCallStore = create((set, get) => ({
     });
 
     socket.on("callAccepted", (signal) => {
+      console.log("Call accepted with signal:", signal);
       set({ callAccepted: true });
       peer.signal(signal);
     });
 
     peer.on("stream", (remoteStream) => {
+      // console.log("Received remote stream:", remoteStream);
       set({ userStream: remoteStream });
     }); 
   },
@@ -97,7 +103,8 @@ export const useCallStore = create((set, get) => ({
       ...iceServersConfig 
     });
 
-    peer.on("signal", (data) => {
+    peer.on("signal", (data) => {  // on answering call => data = type:answer , sdp
+      console.log("Answering call with signal:", data);
       socket.emit("answerCall", { signal: data, to: get().call.from });
     });
 
