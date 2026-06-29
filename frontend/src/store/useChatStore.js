@@ -22,6 +22,8 @@ export const useChatStore = create((set, get) => ({
   //groups
   groups: [],
   isGroupsLoading: false,
+  // unread counts per conversation id (userId or groupId)
+  unreadCounts: {},
 
   getUsers: async () => {
     //userId pass krne ka jrurt nhi hai , req.user se mil jata hai automatic                set({ isUsersLoading: true });
@@ -49,11 +51,19 @@ export const useChatStore = create((set, get) => ({
           messages: res.data,
           isBlockedByThem: false, // Groups mein individual blocking trigger nahi hoti
         });
+        // Clear unread for this group since user opened it
+        set((state) => ({
+          unreadCounts: { ...state.unreadCounts, [userId]: 0 },
+        }));
       } else {
         set({
           messages: res.data.messages,
           isBlockedByThem: res.data.isBlockedByThem,
         }); //res : {message : "" , senderId : "" , receiverId : ""}
+        // Clear unread for this peer conversation since user opened it
+        set((state) => ({
+          unreadCounts: { ...state.unreadCounts, [userId]: 0 },
+        }));
       }
     } catch (error) {
       toast.error(error?.response?.data?.message || "Unable to load messages", {
@@ -80,7 +90,10 @@ export const useChatStore = create((set, get) => ({
         replyTo: replyPreviewMessage ? replyPreviewMessage._id : null, // 🔥 Append target reply reference id
       };
 
-      const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, payload);
+      const res = await axiosInstance.post(
+        `/messages/send/${selectedUser._id}`,
+        payload,
+      );
 
       set({ messages: [...messages, res.data], replyPreviewMessage: null });
     } catch (error) {
@@ -88,7 +101,29 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
-  setSelectedUser: (selectedUser) => set({ selectedUser }),
+  setSelectedUser: (selectedUser) =>
+    set((state) => ({
+      selectedUser,
+      // clear unread for opened chat/group
+      unreadCounts: selectedUser
+        ? { ...state.unreadCounts, [selectedUser._id]: 0 }
+        : state.unreadCounts,
+    })),
+
+  // Helpers to manage unread counts
+  setUnreadCounts: (counts) =>
+    set({ unreadCounts: counts ? { ...counts } : {} }),
+
+  incrementUnread: (id, by = 1) =>
+    set((state) => ({
+      unreadCounts: {
+        ...state.unreadCounts,
+        [id]: (state.unreadCounts[id] || 0) + by,
+      },
+    })),
+
+  clearUnread: (id) =>
+    set((state) => ({ unreadCounts: { ...state.unreadCounts, [id]: 0 } })),
 
   sendStartTyping: () => {
     //sending
@@ -341,11 +376,11 @@ export const useChatStore = create((set, get) => ({
 
       //real time group formation , emit new group id
       const socket = useAuthStore.getState().socket;
-      if(socket) {
+      if (socket) {
         // socket.emit("newGroupCreated", { groupId: res.data._id }); // {_id: "g1", name: "Developers",members: [...] }
-        socket.emit("newGroupCreated", { 
+        socket.emit("newGroupCreated", {
           memberIds: groupData.memberIds, // selected user ids array
-          groupData: res.data            // populated group document from backend
+          groupData: res.data, // populated group document from backend
         });
       }
       closeModal();
@@ -358,7 +393,7 @@ export const useChatStore = create((set, get) => ({
   subscribeToMessages: () => {
     //Receiveing
     const socket = useAuthStore.getState().socket;
-    if(!socket) return;
+    if (!socket) return;
 
     socket.on("displayTyping", ({ senderId }) => {
       set((state) => ({
@@ -380,25 +415,60 @@ export const useChatStore = create((set, get) => ({
       }
     });
 
-    socket.on("userUnblocked", ({ unblockedById }) => {
-      const { selectedUser } = get();
-
-      if (unblockedById === selectedUser?._id) {
-        set({ isBlockedByThem: false });
-      }
+    socket.on("messagesDeletedEveryone", (deletedMessageIds) => {
+      const liveUpdate = get().messages.map((msg) =>
+        deletedMessageIds.includes(msg._id)
+          ? {
+              ...msg,
+              text: "This message was deleted",
+              image: null,
+              video: null,
+              isDeletedEveryone: true,
+            }
+          : msg,
+      );
+      set({ messages: liveUpdate });
     });
+  },
 
-    const { selectedUser } = get();
-    if(!selectedUser) return;
+  subscribeToConversationNotifications: () => {
+    const socket = useAuthStore.getState().socket;
+    if (!socket) return;
+
+    socket.off("newMessage");
+    socket.off("newGroupMessage");
 
     socket.on("newMessage", (newMessage) => {
-      const isMessageSentFromSelectedUser =
-        newMessage.senderId === selectedUser._id;
-      if (!isMessageSentFromSelectedUser) return;
+      const { selectedUser, messages } = get();
+      const senderId = newMessage.senderId?._id || newMessage.senderId;
+      const isActivePeerChat =
+        selectedUser && !selectedUser.isGroup && selectedUser._id === senderId;
 
-      set({
-        messages: [...get().messages, newMessage],
-      });
+      if (isActivePeerChat) {
+        set({ messages: [...messages, newMessage] });
+        get().clearUnread(senderId);
+        return;
+      }
+
+      get().incrementUnread(senderId);
+    });
+
+    socket.on("newGroupMessage", ({ message, groupId }) => {
+      const { selectedUser, messages } = get();
+      const authUserId = useAuthStore.getState().authUser?._id;
+      const incomingSenderId = message.senderId?._id || message.senderId;
+      const isOpenGroupChat =
+        selectedUser?.isGroup && selectedUser._id === groupId;
+
+      if (isOpenGroupChat && incomingSenderId !== authUserId) {
+        set({ messages: [...messages, message] });
+        get().clearUnread(groupId);
+        return;
+      }
+
+      if (incomingSenderId !== authUserId) {
+        get().incrementUnread(groupId);
+      }
     });
 
     socket.on("messagesDeletedEveryone", (deletedMessageIds) => {
@@ -419,12 +489,19 @@ export const useChatStore = create((set, get) => ({
 
   unsubscribeFromMessages: () => {
     const socket = useAuthStore.getState().socket;
-    socket.off("newMessage");
     socket.off("displayTyping");
     socket.off("hideTyping");
     socket.off("messagesDeletedEveryone");
     socket.off("userBlocked");
     socket.off("userUnblocked");
+  },
+
+  unsubscribeFromConversationNotifications: () => {
+    const socket = useAuthStore.getState().socket;
+    if (!socket) return;
+
+    socket.off("newMessage");
+    socket.off("newGroupMessage");
   },
 
   subscribeToGroupUpdates: () => {
@@ -446,36 +523,13 @@ export const useChatStore = create((set, get) => ({
 
   unsubscribeFromGroupUpdates: () => {
     const socket = useAuthStore.getState().socket;
-    if(!socket) return;
+    if (!socket) return;
     socket.off("addNewGroupToSidebar");
-  },
-
-  subscribeToGroupMessages: () => {
-    const socket = useAuthStore.getState().socket;
-    if(!socket) return;
-
-    socket.off("newGroupMessage");
-    socket.on("newGroupMessage" , ({message , groupId}) => {
-      console.log("📩 Real-time Group Message Received:", message);
-      const { selectedUser, messages } = get();
-      const incomingSenderId = message.senderId?._id || message.senderId;
-      if (
-        selectedUser?.isGroup && 
-        selectedUser._id === groupId && 
-        incomingSenderId !== useAuthStore.getState().authUser?._id
-      ) {
-        set({
-          messages: [...messages, message],
-        });
-      }
-
-    })
   },
 
   unsubscribeFromGroupMessages: () => {
     const socket = useAuthStore.getState().socket;
-    if(!socket) return;
+    if (!socket) return;
     socket.off("newGroupMessage");
-  }
-
+  },
 }));

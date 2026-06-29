@@ -7,6 +7,15 @@ import User from "../models/user.model.js";
 import bcrypt from "bcryptjs";
 import cloudinary from "../lib/cloudinary.js";
 
+const toAuthPayload = (user) => ({
+  _id: user._id,
+  fullName: user.fullName,
+  email: user.email,
+  profilePic: user.profilePic,
+  isVerified: user.isVerified,
+  unreadCounts: user.unreadCounts,
+});
+
 export const signup = async (req, res) => {
   const { fullName, email, password } = req.body;
   try {
@@ -15,7 +24,9 @@ export const signup = async (req, res) => {
     }
 
     if (password.length < 6) {
-      return res.status(400).json({ message: "Password must be at least 6 characters" });
+      return res
+        .status(400)
+        .json({ message: "Password must be at least 6 characters" });
     }
 
     const user = await User.findOne({ email });
@@ -36,13 +47,7 @@ export const signup = async (req, res) => {
       generateToken(newUser._id, res);
       await newUser.save();
 
-      res.status(201).json({
-        _id: newUser._id,
-        fullName: newUser.fullName,
-        email: newUser.email,
-        profilePic: newUser.profilePic,
-        isVerified: newUser.isVerified,
-      });
+      res.status(201).json(toAuthPayload(newUser));
     } else {
       res.status(400).json({ message: "Invalid user data" });
     }
@@ -68,13 +73,7 @@ export const login = async (req, res) => {
 
     generateToken(user._id, res);
 
-    res.status(200).json({
-      _id: user._id,
-      fullName: user.fullName,
-      email: user.email,
-      profilePic: user.profilePic,
-      isVerified: user.isVerified,
-    });
+    res.status(200).json(toAuthPayload(user));
   } catch (error) {
     console.log("Error in login controller", error.message);
     res.status(500).json({ message: "Internal Server Error" });
@@ -104,7 +103,7 @@ export const updateProfile = async (req, res) => {
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       { profilePic: uploadResponse.secure_url },
-      { new: true }
+      { new: true },
     );
 
     res.status(200).json(updatedUser);
@@ -124,14 +123,14 @@ export const checkAuth = (req, res) => {
 };
 
 export const sendOTP = async (req, res) => {
-    try {
-        const { email } = req.body;
-        const otp = generateOTP();
-        
-        // OTP ko Redis mein 5 mins ke liye save karein
-        await redis.set(email, otp, 'EX', 300); 
+  try {
+    const { email } = req.body;
+    const otp = generateOTP();
 
-        const otpHtml = `
+    // OTP ko Redis mein 5 mins ke liye save karein
+    await redis.set(email, otp, "EX", 300);
+
+    const otpHtml = `
             <div style="font-family: sans-serif; text-align: center; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
                 <h2 style="color: #6366f1;">Chatty Verification</h2>
                 <p>Your OTP is given below . It will expire in 5 minutes:</p>
@@ -142,87 +141,90 @@ export const sendOTP = async (req, res) => {
             </div>
         `;
 
-        await sendEmail(email,"Chatty - OTP Verification Code", otpHtml);
+    await sendEmail(email, "Chatty - OTP Verification Code", otpHtml);
 
-        return res.status(200).json({
-          message: "OTP sent to your email",
-          success: true
-        });
-    } catch (error) {
-        console.log(error);
-        return res.status(500).json({ message: "Error sending OTP", success: false });
-    }
+    return res.status(200).json({
+      message: "OTP sent to your email",
+      success: true,
+    });
+  } catch (error) {
+    console.log(error);
+    return res
+      .status(500)
+      .json({ message: "Error sending OTP", success: false });
+  }
 };
 
 export const verifyEmail = async (req, res) => {
-    try {
-        const { email, otp } = req.body;
+  try {
+    const { email, otp } = req.body;
 
-        // 1. Redis se OTP uthao
-        const storedOtp = await redis.get(email); 
+    // 1. Redis se OTP uthao
+    const storedOtp = await redis.get(email);
 
-        // 2. Check agar OTP expire ho gaya ya nahi mila
-        if (!storedOtp) {
-            return res.status(400).json({ 
-              message: "OTP expired. Please resend.", 
-              success: false 
-            });
-        }
-
-        // 3. Match logic
-        if (storedOtp === otp) {
-            // MongoDB update karein
-            const user = await User.findOneAndUpdate({ email }, { isVerified: true }); 
-
-            if (!user) {
-                return res.status(404).json({ message: "User not found", success: false });
-            }
-            
-            //RabbitMQ Producer
-            const welcomeData = {
-              email: user.email,
-              name: user.fullName, // Adjust as per your model
-              subject: "Welcome to Chat-App! 🚀"
-            };
-
-            sendToQueue("welcome_emails", welcomeData);
-
-
-            // Verification ke baad cleanup
-            await redis.del(email); 
-            
-            return res.status(200).json({ 
-                message: "Email verified successfully!", 
-                success: true 
-            });
-        } else {
-            return res.status(400).json({ 
-                message: "Invalid OTP. Try again.", 
-                success: false 
-            });
-        }
-    } catch (error) {
-        console.log(error);
-        return res.status(500).json({ 
-            message: "Internal server error", 
-            success: false 
-        });
+    // 2. Check agar OTP expire ho gaya ya nahi mila
+    if (!storedOtp) {
+      return res.status(400).json({
+        message: "OTP expired. Please resend.",
+        success: false,
+      });
     }
-};
 
+    // 3. Match logic
+    if (storedOtp === otp) {
+      // MongoDB update karein
+      const user = await User.findOneAndUpdate({ email }, { isVerified: true });
+
+      if (!user) {
+        return res
+          .status(404)
+          .json({ message: "User not found", success: false });
+      }
+
+      //RabbitMQ Producer
+      const welcomeData = {
+        email: user.email,
+        name: user.fullName, // Adjust as per your model
+        subject: "Welcome to Chat-App! 🚀",
+      };
+
+      sendToQueue("welcome_emails", welcomeData);
+
+      // Verification ke baad cleanup
+      await redis.del(email);
+
+      return res.status(200).json({
+        message: "Email verified successfully!",
+        success: true,
+      });
+    } else {
+      return res.status(400).json({
+        message: "Invalid OTP. Try again.",
+        success: false,
+      });
+    }
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      message: "Internal server error",
+      success: false,
+    });
+  }
+};
 
 export const blockUser = async (req, res) => {
   try {
     const { id: userToBlockId } = req.params;
     const myId = req.user._id;
 
-    if (myId.toString() === userToBlockId) return res.status(400).json({ message: "You cannot block yourself" });
+    if (myId.toString() === userToBlockId)
+      return res.status(400).json({ message: "You cannot block yourself" });
 
     // Current user ke blockedUsers array mein ID add karo
     const updatedUser = await User.findByIdAndUpdate(
-      myId, 
-      { $addToSet: { blockedUsers: userToBlockId } } , 
-      { new: true }
+      myId,
+      { $addToSet: { blockedUsers: userToBlockId } },
+      { new: true },
     );
 
     res.status(200).json(updatedUser);
@@ -238,9 +240,9 @@ export const unblockUser = async (req, res) => {
 
     // $pull array se specific ID ko remove kar deta hai
     const updatedUser = await User.findByIdAndUpdate(
-      myId, 
-      { $pull: { blockedUsers: userToUnblockId } }, 
-      { new: true }
+      myId,
+      { $pull: { blockedUsers: userToUnblockId } },
+      { new: true },
     );
 
     res.status(200).json(updatedUser);

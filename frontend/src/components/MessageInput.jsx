@@ -36,6 +36,7 @@ const MessageInput = () => {
 
   const handleImageVideoChange = (e) => {
     const file = e.target.files[0];
+    if (!file) return;
     if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
       toast.error("Please select an image or video file");
       return;
@@ -86,10 +87,9 @@ const MessageInput = () => {
       setImagePreview(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
       if (textareaRef.current) {
-        textareaRef.current.style.height = "56px"; 
+        textareaRef.current.style.height = "56px";
       }
-    } 
-    catch (error) {
+    } catch (error) {
       console.error("Failed to send message:", error);
     }
   };
@@ -143,14 +143,14 @@ const MessageInput = () => {
             {imagePreview.startsWith("data:video/") ? (
               <video
                 src={imagePreview}
-                className="w-20 h-20 object-cover rounded-lg border border-zinc-700"
+                className="max-h-32 w-auto object-contain rounded-lg border border-base-300"
                 controls
               />
             ) : (
               <img
                 src={imagePreview}
                 alt="Preview"
-                className="w-20 h-20 object-cover rounded-lg border border-zinc-700"
+                className="max-h-32 w-auto object-contain rounded-lg border border-base-300"
               />
             )}
             <button
@@ -185,6 +185,14 @@ const MessageInput = () => {
           />
         </div>
       )}
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*,video/*"
+        className="hidden"
+        onChange={handleImageVideoChange}
+      />
 
       <form onSubmit={handleSendMessage} className="flex items-end gap-2 p-2">
         <div className="flex-1 bg-base-200 rounded-3xl flex flex-col overflow-hidden transition-all duration-300 shadow-inner border border-base-300/30">
@@ -223,7 +231,7 @@ const MessageInput = () => {
             </button>
 
             <textarea
-              ref = {textareaRef}
+              ref={textareaRef}
               className="flex-1 bg-transparent py-4 px-2 text-base focus:outline-none placeholder-base-content/50 resize-none max-h-32 min-h-14 overflow-y-auto align-bottom"
               placeholder="Type a message..."
               value={text}

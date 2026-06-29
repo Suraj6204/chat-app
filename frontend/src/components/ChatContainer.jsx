@@ -13,6 +13,7 @@ import ChatHeader from "./ChatHeader";
 import { useAuthStore } from "../store/useAuthStore";
 import { useChatStore } from "../store/useChatStore";
 import { formatMessageTime } from "../lib/utils";
+import { useNavigate } from "react-router-dom";
 import MessageInput from "./MessageInput";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
 import MenuOptionsBox from "./MenuOptionsBox";
@@ -24,6 +25,7 @@ const ChatContainer = () => {
     getMessages,
     isMessagesLoading,
     selectedUser,
+    setSelectedUser,
     subscribeToMessages,
     unsubscribeFromMessages,
     typingUsers,
@@ -33,11 +35,10 @@ const ChatContainer = () => {
     setActiveMenuId,
     unblockUser,
     isBlockedByThem,
-    subscribeToGroupMessages,
-    unsubscribeFromGroupMessages,
   } = useChatStore();
 
   const { authUser, setAuthUser } = useAuthStore();
+  const navigate = useNavigate();
   const messageEndRef = useRef(null);
   const scrollContainerRef = useRef(null);
 
@@ -58,6 +59,29 @@ const ChatContainer = () => {
   const getSenderId = (sender) => sender?._id || sender;
   const isOwnMessage = (message) =>
     getSenderId(message?.senderId) === authUser?._id;
+  const getMessageSender = (message) => {
+    const senderId = getSenderId(message?.senderId);
+
+    if (!senderId) return null;
+    if (senderId === authUser?._id) return authUser;
+
+    return (
+      selectedUser?.members?.find((member) => member._id === senderId) ||
+      (typeof message?.senderId === "object" ? message.senderId : null)
+    );
+  };
+
+  const handleSenderNameClick = (message) => {
+    const sender = getMessageSender(message);
+    if (!sender?._id) return;
+
+    if (sender._id === authUser?._id) {
+      navigate("/profile");
+      return;
+    }
+
+    setSelectedUser({ ...sender, isGroup: false });
+  };
 
   const handleScroll = () => {
     if (scrollContainerRef.current) {
@@ -167,17 +191,6 @@ const ChatContainer = () => {
   ]);
 
   useEffect(() => {
-    if (!selectedUser) return;
-    if (selectedUser.isGroup) {
-      subscribeToGroupMessages();
-    }
-    // Cleanup: Jab chat window change ho ya component unmount ho, toh listener off kar do
-    return () => {
-      unsubscribeFromGroupMessages();
-    };
-  }, [selectedUser, subscribeToGroupMessages, unsubscribeFromGroupMessages]);
-
-  useEffect(() => {
     const lastMessage = messages?.[messages.length - 1];
     const isMyMessage = isOwnMessage(lastMessage);
 
@@ -280,6 +293,19 @@ const ChatContainer = () => {
                       : "bg-base-200 text-base-content cursor-pointer"
                 }`}
               >
+                {selectedUser?.isGroup && !isOwnMessage(message) && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSenderNameClick(message);
+                    }}
+                    className="link link-primary underline underline-offset-2 text-xs font-semibold mb-1 w-fit"
+                  >
+                    {getMessageSender(message)?.fullName || "Unknown"}
+                  </button>
+                )}
+
                 {message.isDeletedEveryone ? (
                   <div className="flex items-center gap-2 py-0.5 pr-2 select-none">
                     <Ban size={14} className="opacity-60" />
@@ -327,18 +353,22 @@ const ChatContainer = () => {
                       </div>
                     )}
                     {message.image && (
-                      <img
-                        src={message.image}
-                        alt="Attachment"
-                        className="sm:max-w-5 rounded-md mb-2"
-                      />
+                      <div className="mb-2 overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-sm max-w-70 sm:max-w-[320px]">
+                        <img
+                          src={message.image}
+                          alt="Attachment"
+                          className="block w-full h-auto max-h-80 object-contain"
+                        />
+                      </div>
                     )}
                     {message.video && (
-                      <video
-                        src={message.video}
-                        controls
-                        className="sm:max-w-50 rounded-md mb-2"
-                      />
+                      <div className="mb-2 overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-sm max-w-70 sm:max-w-[320px]">
+                          <video
+                            src={message.video}
+                            controls
+                            className="block w-full max-h-80 object-contain"
+                          />
+                      </div>
                     )}
                     {message.text && <p>{message.text}</p>}
                   </>

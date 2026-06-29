@@ -1,5 +1,6 @@
 import Group from "../models/group.model.js";
 import Message from "../models/message.model.js";
+import User from "../models/user.model.js";
 
 // 1. Create Group
 export const createGroup = async (req, res) => {
@@ -57,6 +58,7 @@ export const getMyGroups = async (req, res) => {
 export const getGroupMessages = async (req, res) => {
   try {
     const { id: groupId } = req.params;
+    const myId = req.user._id;
 
     const messages = await Message.find({
       receiverId: groupId,
@@ -67,6 +69,11 @@ export const getGroupMessages = async (req, res) => {
         path: "replyTo",
         populate: { path: "senderId", select: "fullName" },
       });
+
+    await User.updateOne(
+      { _id: myId },
+      { $set: { [`unreadCounts.${groupId}`]: 0 } },
+    );
 
     /*populated message example structure:
 {

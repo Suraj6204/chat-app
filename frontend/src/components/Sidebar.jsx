@@ -31,8 +31,11 @@ const Sidebar = () => {
     isGroupsLoading,
     subscribeToGroupUpdates,
     unsubscribeFromGroupUpdates,
+    subscribeToConversationNotifications,
+    unsubscribeFromConversationNotifications,
+    unreadCounts,
+    setUnreadCounts,
   } = useChatStore();
-
   const { onlineUsers, authUser } = useAuthStore();
   const [showOnlineOnly, setShowOnlineOnly] = useState(false);
 
@@ -93,8 +96,27 @@ const Sidebar = () => {
     if (!authUser) return;
 
     subscribeToGroupUpdates();
-    return () => unsubscribeFromGroupUpdates();
-  }, [authUser, subscribeToGroupUpdates, unsubscribeFromGroupUpdates]);
+    subscribeToConversationNotifications();
+    return () => {
+      unsubscribeFromGroupUpdates();
+      unsubscribeFromConversationNotifications();
+    };
+  }, [
+    authUser,
+    subscribeToGroupUpdates,
+    unsubscribeFromGroupUpdates,
+    subscribeToConversationNotifications,
+    unsubscribeFromConversationNotifications,
+  ]);
+
+  useEffect(() => {
+    if (!authUser) {
+      setUnreadCounts({});
+      return;
+    }
+
+    setUnreadCounts(authUser.unreadCounts || {});
+  }, [authUser, setUnreadCounts]);
 
   useEffect(() => {
     const handleClickOnOutside = () => {
@@ -135,23 +157,40 @@ const Sidebar = () => {
         </div>
 
         {/* 🔥 NEW UI: Modern Segmented Chat/Group Segment Switcher Toggle */}
-        <div className="bg-base-200 p-1 rounded-xl flex w-full">
-          <button
-            onClick={() => setActiveTab("chats")}
-            className={`flex-1 py-2 px-3 rounded-lg flex items-center justify-center gap-2 text-sm font-medium transition-all duration-200 cursor-pointer
+        <div className="bg-base-200 p-1 rounded-xl flex-row lg:flex w-fit gap-2">
+          <div className="relative">
+            <button
+              onClick={() => setActiveTab("chats")}
+              className={`flex-1 py-2 px-3 rounded-lg flex items-center justify-center gap-2 text-sm font-medium transition-all duration-200 cursor-pointer
               ${activeTab === "chats" ? "bg-primary text-primary-content shadow-sm" : "text-base-content/70 hover:bg-base-300/50"}`}
-          >
-            <MessageSquare className="size-4" />
-            <span className="hidden lg:inline">Personal</span>
-          </button>
-          <button
-            onClick={() => setActiveTab("groups")}
-            className={`flex-1 py-2 px-3 rounded-lg flex items-center justify-center gap-2 text-sm font-medium transition-all duration-200 cursor-pointer
+            >
+              <MessageSquare className="size-4" />
+              <span className="hidden lg:inline">Personal</span>
+            </button>
+
+            {Object.entries(unreadCounts).some(
+              ([id, count]) => count > 0 && users.some((u) => u._id === id),
+            ) && (
+              <span className="absolute top-1 right-1 w-3 h-3 rounded-full bg-green-500 border-2 border-base-100"></span>
+            )}
+          </div>
+
+          <div className="relative">
+            <button
+              onClick={() => setActiveTab("groups")}
+              className={`flex-1 py-2 px-3 rounded-lg flex items-center justify-center gap-2 text-sm font-medium transition-all duration-200 cursor-pointer
               ${activeTab === "groups" ? "bg-primary text-primary-content shadow-sm" : "text-base-content/70 hover:bg-base-300/50"}`}
-          >
-            <Users className="size-4" />
-            <span className="hidden lg:inline">Groups</span>
-          </button>
+            >
+              <Users className="size-4" />
+              <span className="hidden lg:inline">Groups</span>
+            </button>
+
+            {Object.entries(unreadCounts).some(
+              ([id, count]) => count > 0 && groups.some((g) => g._id === id),
+            ) && (
+              <span className="absolute top-1 right-1 w-3 h-3 rounded-full bg-green-500 border-2 border-base-100"></span>
+            )}
+          </div>
         </div>
 
         {/* Online Filter Checkbox - Only show when Personal Chats active */}
@@ -196,11 +235,18 @@ const Sidebar = () => {
                 >
                   <div className="relative mx-auto lg:mx-0 shrink-0">
                     {group.groupPic ? (
-                      <img
-                        src={group.groupPic}
-                        alt={group.name}
-                        className="size-11 object-cover rounded-full border border-base-300"
-                      />
+                      <div className="relative">
+                        <img
+                          src={group.groupPic}
+                          alt={group.name}
+                          className="size-11 object-cover rounded-full border border-base-300"
+                        />
+                        {unreadCounts?.[group._id] > 0 && (
+                          <span className="absolute -top-1 -right-1 badge badge-xs badge-primary lg:hidden">
+                            {unreadCounts[group._id]}
+                          </span>
+                        )}
+                      </div>
                     ) : (
                       <div className="avatar placeholder">
                         <div className="bg-neutral text-neutral-content rounded-full size-11 flex items-center justify-center border border-base-300">
@@ -217,12 +263,19 @@ const Sidebar = () => {
                       <div className="font-semibold truncate text-sm">
                         {group.name}
                       </div>
-                      {isGroupPinned && (
-                        <PinIcon
-                          size={13}
-                          className="text-primary fill-primary shrink-0 rotate-45"
-                        />
-                      )}
+                      <div className="flex items-center gap-2">
+                        {unreadCounts?.[group._id] > 0 && (
+                          <div className="badge badge-sm badge-primary">
+                            {unreadCounts[group._id]}
+                          </div>
+                        )}
+                        {isGroupPinned && (
+                          <PinIcon
+                            size={13}
+                            className="text-primary fill-primary shrink-0 rotate-45"
+                          />
+                        )}
+                      </div>
                     </div>
                     <div className="text-xs text-base-content/60 truncate mt-0.5">
                       {group.members?.length || 0} members
@@ -257,11 +310,18 @@ const Sidebar = () => {
                   `}
                 >
                   <div className="relative mx-auto lg:mx-0 shrink-0">
-                    <img
-                      src={user.profilePic || "/avatar.png"}
-                      alt={user.fullName}
-                      className="size-11 object-cover rounded-full"
-                    />
+                    <div className="relative">
+                      <img
+                        src={user.profilePic || "/avatar.png"}
+                        alt={user.fullName}
+                        className="size-11 object-cover rounded-full"
+                      />
+                      {unreadCounts?.[user._id] > 0 && (
+                        <span className="absolute -top-1 -right-1 badge badge-xs badge-primary">
+                          {unreadCounts[user._id]}
+                        </span>
+                      )}
+                    </div>
                     {onlineUsers.includes(user._id) && (
                       <span
                         className="absolute bottom-0 right-0 size-3 bg-green-500 
@@ -276,12 +336,19 @@ const Sidebar = () => {
                         {user.fullName}
                       </div>
 
-                      {isChatPinned && (
-                        <PinIcon
-                          size={13}
-                          className="text-primary fill-primary shrink-0 rotate-45"
-                        />
-                      )}
+                      <div className="flex items-center gap-2">
+                        {unreadCounts?.[user._id] > 0 && (
+                          <div className="badge badge-sm badge-primary">
+                            {unreadCounts[user._id]}
+                          </div>
+                        )}
+                        {isChatPinned && (
+                          <PinIcon
+                            size={13}
+                            className="text-primary fill-primary shrink-0 rotate-45"
+                          />
+                        )}
+                      </div>
                     </div>
                     <div className="text-xs text-base-content/60 mt-0.5">
                       {typingUsers?.includes(user._id) ? (

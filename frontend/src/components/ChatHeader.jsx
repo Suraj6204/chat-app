@@ -5,7 +5,7 @@ import toast from "react-hot-toast";
 import { useCallStore } from "../store/useCallStore";
 
 const ChatHeader = () => {
-  const { selectedUser, setSelectedUser, typingUsers } = useChatStore();
+  const { selectedUser, setSelectedUser, typingUsers , groups } = useChatStore();
   const { onlineUsers } = useAuthStore();
   const isOnline = onlineUsers.includes(selectedUser._id);
   const isTyping = typingUsers.includes(selectedUser._id);
@@ -27,7 +27,11 @@ const ChatHeader = () => {
         <div className="flex items-center gap-3">
           <div className="avatar">
             <div className="size-10 rounded-full relative">
-              <img src={selectedUser.profilePic || "/avatar.png"} alt={selectedUser.fullName} />
+              {selectedUser?.isGroup ? (
+                <img src={selectedUser.groupPic || "/avatar.png"} alt={selectedUser.name} />
+              ) : (
+                <img src={selectedUser.profilePic || "/avatar.png"} alt={selectedUser.fullName} />
+              )}
               {/* Online Indicator Dot */}
               {isOnline && (
                 <span className="absolute bottom-0 right-0 size-3 bg-green-500 border-2 border-base-100 rounded-full" />
@@ -36,10 +40,15 @@ const ChatHeader = () => {
           </div>
 
           <div>
-            <h3 className="font-medium">{selectedUser.fullName}</h3>
-            <p className="text-sm text-base-content/70">
-              {isTyping ? "Typing..." : isOnline ? "Online" : "Offline"}
-            </p>
+            <h3 className="font-medium">
+              {selectedUser?.isGroup ? selectedUser.name : selectedUser?.fullName}
+            </h3>
+
+            {!selectedUser?.isGroup && (
+              <p className="text-sm text-base-content/70">
+                {isTyping ? "Typing..." : isOnline ? "Online" : "Offline"}
+              </p>
+            )}
           </div>
         </div>
 

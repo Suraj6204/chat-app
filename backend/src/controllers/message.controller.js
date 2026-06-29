@@ -2,6 +2,25 @@ import cloudinary from "../lib/cloudinary.js";
 import { getReceiverSocketId, io } from "../lib/socket.js";
 import Message from "../models/message.model.js";
 import User from "../models/user.model.js";
+import Group from "../models/group.model.js";
+
+const incrementUnreadCount = async (userIds, conversationId) => {
+  if (!conversationId || !userIds || userIds.length === 0) return;
+
+  await User.updateMany(
+    { _id: { $in: userIds } },
+    { $inc: { [`unreadCounts.${conversationId}`]: 1 } },
+  );
+};
+
+const clearUnreadCount = async (userId, conversationId) => {
+  if (!userId || !conversationId) return;
+
+  await User.updateOne(
+    { _id: userId },
+    { $set: { [`unreadCounts.${conversationId}`]: 0 } },
+  );
+};
 
 export const getUsersForSidebar = async (req, res) => {
   try {
@@ -43,6 +62,8 @@ export const getMessages = async (req, res) => {
       deletedBy: { $ne: myId }, //this helps to not show the msg deleted by you
     }).populate("replyTo", "text image video senderId");
     //populate to give proper structure=> {text :"" , replyTo: {text : "" , image: "" , video: "" , senderId: ""}}
+
+    await clearUnreadCount(myId, userToChatId);
 
     res.status(200).json({ messages, isBlockedByThem });
   } catch (error) {
@@ -114,11 +135,22 @@ export const sendMessage = async (req, res) => {
     );
 
     if (conversationType === "group") {
+      const group = await Group.findById(receiverId).select("members");
+      const recipientIds = (group?.members || []).filter(
+        (memberId) => memberId.toString() !== senderId.toString(),
+      );
+
+      if (recipientIds.length > 0) {
+        await incrementUnreadCount(recipientIds, receiverId);
+      }
+
       io.to(`group:${receiverId}`).emit("newGroupMessage", {
         message: populatedMessage,
         groupId: receiverId,
       });
     } else {
+      await incrementUnreadCount([receiverId], senderId);
+
       const receiverSocketId = getReceiverSocketId(receiverId);
       if (receiverSocketId) {
         io.to(receiverSocketId).emit("newMessage", populatedMessage);
@@ -205,6 +237,27 @@ export const clearChat = async (req, res) => {
   } catch (error) {
     console.error("Error in clearChat controller:", error.message);
     res.status(500).json({ success: false, error: "Internal server error" });
+  }
+};
+
+export const clearUnreadForConversation = async (req, res) => {
+  try {
+    const { id: conversationId } = req.params;
+    const { conversationType } = req.body;
+    const myId = req.user._id;
+
+    if (!conversationId || !conversationType) {
+      return res
+        .status(400)
+        .json({ message: "Conversation id and type are required" });
+    }
+
+    await clearUnreadCount(myId, conversationId);
+
+    res.status(200).json({ success: true, message: "Unread count cleared" });
+  } catch (error) {
+    console.error("Error clearing unread count:", error.message);
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 
