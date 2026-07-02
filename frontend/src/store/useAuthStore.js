@@ -15,6 +15,7 @@ export const useAuthStore = create((set, get) => ({
   tempEmail: null,
   onlineUsers: [],
   socket: null,
+  isUsernameLoading: false,
 
   checkAuth: async () => {
     try {
@@ -148,4 +149,53 @@ export const useAuthStore = create((set, get) => ({
   setTempEmail: (email) => set({ tempEmail: email }),
   
   setAuthUser: (user) => set({ authUser: user }),
+
+  checkUsernameAvailability: async (username) => {
+    set({ isUsernameLoading: true });
+
+    try{
+      const res = await axiosInstance.get(`auth/check-username/${encodeURIComponent(username)}`);
+      return res.data;
+    }catch(error){
+      return error.response.data;;
+    }finally {
+      set({ isUsernameLoading: false });
+    }
+  },
+
+  updateUsername: async (username) => {
+    set({ isUsernameLoading: true });
+
+    try {
+      const res = await axiosInstance.patch("/auth/update-username", {
+        username,
+      });
+
+      set({ authUser: res.data });
+      toast.success("Username updated successfully");
+      return true;
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to update username");
+      return false;
+    } finally {
+      set({ isUsernameLoading: false });
+    }
+  },
+
+  searchUserByUsername: async (username) =>{
+    set({ isUsernameLoading: true });
+
+    try {
+      const res = await axiosInstance.get(
+        `/auth/search-user?username=${encodeURIComponent(username)}`
+      );
+
+      return res.data;
+    } catch (error) {
+      toast.error(error.response?.data?.message || "User not found");
+      return null;
+    } finally {
+      set({ isUsernameLoading: false });
+    }
+  },
 }));

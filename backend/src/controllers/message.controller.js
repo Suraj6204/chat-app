@@ -4,31 +4,38 @@ import Message from "../models/message.model.js";
 import User from "../models/user.model.js";
 import Group from "../models/group.model.js";
 
-const incrementUnreadCount = async (userIds, conversationId) => {
-  if (!conversationId || !userIds || userIds.length === 0) return;
-
-  await User.updateMany(
-    { _id: { $in: userIds } },
-    { $inc: { [`unreadCounts.${conversationId}`]: 1 } },
-  );
-};
-
-const clearUnreadCount = async (userId, conversationId) => {
-  if (!userId || !conversationId) return;
-
-  await User.updateOne(
-    { _id: userId },
-    { $set: { [`unreadCounts.${conversationId}`]: 0 } },
-  );
-};
-
 export const getUsersForSidebar = async (req, res) => {
   try {
-    const loggedInUserId = req.user._id;
+    const myId = req.user._id;
+    // const loggedInUserId = req.user._id;
     //sare user ko lao bs khud ko chork(ne - not equal) and password field ko exclude kro (- sign lgakr)
+
+    // const filteredUsers = await User.find({
+    //   _id: { $ne: loggedInUserId },
+    // }).select("-password");
+
+    const messages = await Message.find({
+      $or: [
+        {senderId: myId},
+        {receiverId : myId}
+      ]
+    }).sort({createdAt : -1 });
+
+    const userIds = new Set();
+
+    messages.forEach((msg) => {
+      if(msg.senderId.toString() === myId.toString()){  // hm jisko message kiye hai , wo dikhega
+        userIds.add(msg.receiverId.toString());
+      }
+      else{
+        userIds.add(msg.senderId.toString());
+      }
+    })
+
     const filteredUsers = await User.find({
-      _id: { $ne: loggedInUserId },
+      _id: { $in: [...userIds] },
     }).select("-password");
+
     res.status(200).json(filteredUsers);
   } catch (error) {
     console.error("Error in getUsersForSidebar: ", error.message);
@@ -240,27 +247,6 @@ export const clearChat = async (req, res) => {
   }
 };
 
-export const clearUnreadForConversation = async (req, res) => {
-  try {
-    const { id: conversationId } = req.params;
-    const { conversationType } = req.body;
-    const myId = req.user._id;
-
-    if (!conversationId || !conversationType) {
-      return res
-        .status(400)
-        .json({ message: "Conversation id and type are required" });
-    }
-
-    await clearUnreadCount(myId, conversationId);
-
-    res.status(200).json({ success: true, message: "Unread count cleared" });
-  } catch (error) {
-    console.error("Error clearing unread count:", error.message);
-    res.status(500).json({ success: false, message: "Internal server error" });
-  }
-};
-
 export const togglePinChat = async (req, res) => {
   try {
     const { id: targetUserId } = req.params;
@@ -290,3 +276,44 @@ export const togglePinChat = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
+export const clearUnreadForConversation = async (req, res) => {
+  try {
+    const { id: conversationId } = req.params;
+    const { conversationType } = req.body;
+    const myId = req.user._id;
+
+    if (!conversationId || !conversationType) {
+      return res
+        .status(400)
+        .json({ message: "Conversation id and type are required" });
+    }
+
+    await clearUnreadCount(myId, conversationId);
+
+    res.status(200).json({ success: true, message: "Unread count cleared" });
+  } catch (error) {
+    console.error("Error clearing unread count:", error.message);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+const incrementUnreadCount = async (userIds, conversationId) => {
+  if (!conversationId || !userIds || userIds.length === 0) return;
+
+  await User.updateMany(
+    { _id: { $in: userIds } },
+    { $inc: { [`unreadCounts.${conversationId}`]: 1 } },
+  );
+};
+
+const clearUnreadCount = async (userId, conversationId) => {
+  if (!userId || !conversationId) return;
+
+  await User.updateOne(
+    { _id: userId },
+    { $set: { [`unreadCounts.${conversationId}`]: 0 } },
+  );
+};
+
+

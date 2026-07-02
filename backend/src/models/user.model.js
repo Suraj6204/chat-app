@@ -11,6 +11,16 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    username: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+      lowercase: true,
+      minlength: 5,
+      maxlength: 31,
+      match: /^#[a-z0-9_]{4,30}$/
+    },
     password: {
       type: String,
       required: true,

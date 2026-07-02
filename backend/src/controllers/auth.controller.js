@@ -6,6 +6,7 @@ import { generateToken } from "../lib/utils.js";
 import User from "../models/user.model.js";
 import bcrypt from "bcryptjs";
 import cloudinary from "../lib/cloudinary.js";
+import { validateUsername } from "../utils/validateUsername.js";
 
 const toAuthPayload = (user) => ({
   _id: user._id,
@@ -248,5 +249,97 @@ export const unblockUser = async (req, res) => {
     res.status(200).json(updatedUser);
   } catch (error) {
     res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const checkUsernameAvailability = async (req, res) => {
+  try {
+    const username = req.params.username.toLowerCase();
+
+    if (!/^#[a-z0-9_]{4,30}$/.test(username)) {
+      return res.status(400).json({
+        available: false,
+        message: "Invalid username format",
+      });
+    }
+
+    const available = await isUsernameAvailable(username);
+
+    if (!available) {
+      return res.status(400).json({
+        available: false,
+        message: "Username not available",
+      });
+    }
+
+    res.status(200).json({
+      available: true,
+      message: "Username available",
+    });
+  } catch (error) {
+    console.error("Error in checkUsernameAvailability:", error.message);
+    res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+};
+
+export const updateUsername = async (req,res) => {
+  try{
+    let {username} = req.body;
+    username = username.toLowerCase();
+
+    const validation = validateUsername(username);
+
+    if (!validation.valid) {
+      return res.status(400).json({
+        message: validation.message,
+      });
+    }
+
+    const existingUser = await User.findOne({ username });
+   
+    if (existingUser && existingUser._id.toString() !== req.user._id.toString()) {
+      return res.status(400).json({ message: "Username already taken" });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user._id , 
+      { username },
+      { new : true}
+    ).select("-password");
+
+    res.status(200).json(updatedUser);
+  }catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+}
+
+export const searchUserByUsername = async (req, res) => {
+  try {
+    const username = req.query.username.toLowerCase();
+
+    const user = await User.findOne({
+      username,
+      _id: { $ne: req.user._id },
+    }).select("-password");
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    res.status(200).json(user);
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      message: "Internal server error",
+    });
   }
 };
