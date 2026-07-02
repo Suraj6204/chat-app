@@ -1,5 +1,5 @@
 import express from "express";
-import { blockUser, checkAuth, checkUsernameAvailability, login, logout, searchUserByUsername, sendOTP, signup, unblockUser, updateProfile, updateUsername, verifyEmail } from "../controllers/auth.controller.js";
+import { blockUser, checkAuth, checkUsernameAvailability, login, logout, sendOTP, signup, unblockUser, updateProfile, search , updateUsername, verifyEmail } from "../controllers/auth.controller.js";
 import { protectRoute } from "../middleware/auth.middleware.js";
 import { authLimiter, signupLimiter } from "../middleware/rateLimiter.js";
 
@@ -18,7 +18,7 @@ router.get("/check", protectRoute, checkAuth); //user authenticated or not
 router.patch("/block/:id", protectRoute, blockUser);
 router.patch("/unblock/:id", protectRoute, unblockUser);
 
-router.get("/search-user", protectRoute, searchUserByUsername);
+router.get("/search-user", protectRoute, search);
 router.get("/check-username/:username", protectRoute, checkUsernameAvailability);
 router.patch("/update-username", protectRoute, updateUsername);
 

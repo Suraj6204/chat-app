@@ -154,10 +154,13 @@ export const useAuthStore = create((set, get) => ({
     set({ isUsernameLoading: true });
 
     try{
-      const res = await axiosInstance.get(`auth/check-username/${encodeURIComponent(username)}`);
+      const res = await axiosInstance.get(`/auth/check-username/${encodeURIComponent(username)}`);
       return res.data;
     }catch(error){
-      return error.response.data;;
+      return error.response?.data || {
+        available: false,
+        message: "Something went wrong",
+      };
     }finally {
       set({ isUsernameLoading: false });
     }
@@ -173,10 +176,10 @@ export const useAuthStore = create((set, get) => ({
 
       set({ authUser: res.data });
       toast.success("Username updated successfully");
-      return true;
+      return res.data;
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to update username");
-      return false;
+      return null;
     } finally {
       set({ isUsernameLoading: false });
     }
@@ -192,8 +195,7 @@ export const useAuthStore = create((set, get) => ({
 
       return res.data;
     } catch (error) {
-      toast.error(error.response?.data?.message || "User not found");
-      return null;
+      return error.response?.data || null;
     } finally {
       set({ isUsernameLoading: false });
     }

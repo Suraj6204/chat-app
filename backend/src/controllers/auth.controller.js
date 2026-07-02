@@ -7,11 +7,15 @@ import User from "../models/user.model.js";
 import bcrypt from "bcryptjs";
 import cloudinary from "../lib/cloudinary.js";
 import { validateUsername } from "../utils/validateUsername.js";
+import { isUsernameAvailable } from "../utils/username.helper.js";
+import User from "../models/user.model.js";
+import Group from "../models/group.model.js";
 
 const toAuthPayload = (user) => ({
   _id: user._id,
   fullName: user.fullName,
   email: user.email,
+  username: user.username,
   profilePic: user.profilePic,
   isVerified: user.isVerified,
   unreadCounts: user.unreadCounts,
@@ -284,9 +288,9 @@ export const checkUsernameAvailability = async (req, res) => {
   }
 };
 
-export const updateUsername = async (req,res) => {
-  try{
-    let {username} = req.body;
+export const updateUsername = async (req, res) => {
+  try {
+    let { username } = req.body;
     username = username.toLowerCase();
 
     const validation = validateUsername(username);
@@ -298,45 +302,63 @@ export const updateUsername = async (req,res) => {
     }
 
     const existingUser = await User.findOne({ username });
-   
-    if (existingUser && existingUser._id.toString() !== req.user._id.toString()) {
+
+    if (
+      existingUser &&
+      existingUser._id.toString() !== req.user._id.toString()
+    ) {
       return res.status(400).json({ message: "Username already taken" });
     }
 
     const updatedUser = await User.findByIdAndUpdate(
-      req.user._id , 
+      req.user._id,
       { username },
-      { new : true}
+      { new: true },
     ).select("-password");
 
     res.status(200).json(updatedUser);
-  }catch (error) {
+  } catch (error) {
     console.error(error);
 
     res.status(500).json({
       message: "Internal server error",
     });
   }
-}
+};
 
-export const searchUserByUsername = async (req, res) => {
+export const search = async (req, res) => {
   try {
-    const username = req.query.username.toLowerCase();
+    const query = req.query.query?.trim();
 
-    const user = await User.findOne({
-      username,
-      _id: { $ne: req.user._id },
-    }).select("-password");
-
-    if (!user) {
-      return res.status(404).json({
-        message: "User not found",
+    if (!query) {
+      return res.status(400).json({
+        message: "Search query is required",
       });
     }
 
-    res.status(200).json(user);
+    // Users: search by username (exclude yourself)
+    const users = await User.find({
+      username: {
+        $regex: "^" + query,
+        $options: "i",
+      },
+      _id: { $ne: req.user._id },
+    }).select("-password");
+
+    // Groups: search by group name
+    const groups = await Group.find({
+      name: {
+        $regex: query,
+        $options: "i",
+      },
+    }).populate("creator", "fullName profilePic username");
+
+    res.status(200).json({
+      users,
+      groups,
+    });
   } catch (error) {
-    console.error(error);
+    console.error("Error in search:", error.message);
 
     res.status(500).json({
       message: "Internal server error",
