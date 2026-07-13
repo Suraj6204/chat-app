@@ -79,18 +79,18 @@ export const useChatStore = create((set, get) => ({
   setReplyPreviewMessage: (message) => set({ replyPreviewMessage: message }),
   clearReplyPreviewMessage: () => set({ replyPreviewMessage: null }),
 
-  addUserToSidebar: (user) => 
+  moveUserToTop: (user) => 
     set((state) => {
       if(!user?._id) return state;
-      const exists = state.users.some((u)=> u._id === user._id);
-      if(exists) return state;
-      return { users : [user , ...state.users] };
+      return { 
+        users : [user , ...state.users.filter((u) => u._id !== user._id)] 
+      };
     }),
 
   //it sends replied and normal messages and group msg
   sendMessage: async (messageData) => {
     //messageData - {text , image , video}
-    const { selectedUser, replyPreviewMessage, messages , addUserToSidebar} = get();
+    const { selectedUser, replyPreviewMessage, messages , moveUserToTop} = get();
     try {
       const payload = {
         ...messageData,
@@ -106,7 +106,7 @@ export const useChatStore = create((set, get) => ({
       set({ messages: [...messages, res.data], replyPreviewMessage: null });
 
       if (selectedUser && !selectedUser.isGroup) {
-        addUserToSidebar(selectedUser);
+        moveUserToTop(selectedUser);
       }
     } catch (error) {
       toast.error(error.response.data.message);
@@ -464,10 +464,9 @@ export const useChatStore = create((set, get) => ({
 
       get().incrementUnread(senderId);
 
-      const alreadyInSidebar = users.some((u) => u._id === senderId);
-      if(!alreadyInSidebar && newMessage.senderId && typeof newMessage.senderId === "object"){
+      if(newMessage.senderId && typeof newMessage.senderId === "object"){
         set((state) => {
-          users : [newMessage.senderId , ...state.users]
+          users : [newMessage.senderId , ...state.users.filter((u) => u._id !== newMessage.senderId._id)]
         })
       }
     });
