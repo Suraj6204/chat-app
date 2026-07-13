@@ -3,7 +3,6 @@ import { sendToQueue } from "../lib/rabbitmq.js";
 import redis from "../lib/redis.js";
 import { sendEmail } from "../lib/sendEmail.js";
 import { generateToken } from "../lib/utils.js";
-import User from "../models/user.model.js";
 import bcrypt from "bcryptjs";
 import cloudinary from "../lib/cloudinary.js";
 import { validateUsername } from "../utils/validateUsername.js";

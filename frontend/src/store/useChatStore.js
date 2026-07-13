@@ -79,10 +79,18 @@ export const useChatStore = create((set, get) => ({
   setReplyPreviewMessage: (message) => set({ replyPreviewMessage: message }),
   clearReplyPreviewMessage: () => set({ replyPreviewMessage: null }),
 
+  addUserToSidebar: (user) => 
+    set((state) => {
+      if(!user?._id) return state;
+      const exists = state.users.some((u)=> u._id === user._id);
+      if(exists) return state;
+      return { users : [user , ...state.users] };
+    }),
+
   //it sends replied and normal messages and group msg
   sendMessage: async (messageData) => {
     //messageData - {text , image , video}
-    const { selectedUser, replyPreviewMessage, messages } = get();
+    const { selectedUser, replyPreviewMessage, messages , addUserToSidebar} = get();
     try {
       const payload = {
         ...messageData,
@@ -96,6 +104,10 @@ export const useChatStore = create((set, get) => ({
       );
 
       set({ messages: [...messages, res.data], replyPreviewMessage: null });
+
+      if (selectedUser && !selectedUser.isGroup) {
+        addUserToSidebar(selectedUser);
+      }
     } catch (error) {
       toast.error(error.response.data.message);
     }
@@ -439,7 +451,7 @@ export const useChatStore = create((set, get) => ({
     socket.off("newGroupMessage");
 
     socket.on("newMessage", (newMessage) => {
-      const { selectedUser, messages } = get();
+      const { selectedUser, messages , users} = get();
       const senderId = newMessage.senderId?._id || newMessage.senderId;
       const isActivePeerChat =
         selectedUser && !selectedUser.isGroup && selectedUser._id === senderId;
@@ -451,6 +463,13 @@ export const useChatStore = create((set, get) => ({
       }
 
       get().incrementUnread(senderId);
+
+      const alreadyInSidebar = users.some((u) => u._id === senderId);
+      if(!alreadyInSidebar && newMessage.senderId && typeof newMessage.senderId === "object"){
+        set((state) => {
+          users : [newMessage.senderId , ...state.users]
+        })
+      }
     });
 
     socket.on("newGroupMessage", ({ message, groupId }) => {

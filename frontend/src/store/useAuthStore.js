@@ -185,12 +185,12 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
-  searchUserByUsername: async (username) =>{
+  searchAll: async (query) =>{
     set({ isUsernameLoading: true });
 
     try {
       const res = await axiosInstance.get(
-        `/auth/search-user?username=${encodeURIComponent(username)}`
+        `/auth/search-user?query=${encodeURIComponent(query)}`
       );
 
       return res.data;
