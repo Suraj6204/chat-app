@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState , useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/useAuthStore";
 import {
@@ -8,6 +8,7 @@ import {
   Loader2,
   Mail,
   User,
+  Pencil
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -18,14 +19,13 @@ import {
 } from "../lib/username";
 
 const ProfilePage = () => {
+  const inputRef = useRef(null);
   const navigate = useNavigate();
-  const { authUser, isUpdatingProfile, updateProfile, updateUsername } =
-    useAuthStore();
+  const { authUser, isUpdatingProfile, updateProfile, updateUsername } = useAuthStore();
   const [selectedImg, setSelectedImg] = useState(null);
-  const [usernameSuffix, setUsernameSuffix] = useState(
-    authUser?.username ? authUser.username.slice(1) : "",
-  );
+  const [usernameSuffix, setUsernameSuffix] = useState(authUser?.username ? authUser.username.slice(1) : "");
   const [savingUsername, setSavingUsername] = useState(false);
+  const [isEditingUsername, setIsEditingUsername] = useState(false);
 
   useEffect(() => {
     if (!authUser) {
@@ -39,6 +39,15 @@ const ProfilePage = () => {
   );
   const validation = useMemo(() => validateUsername(username), [username]);
   const checks = useMemo(() => getUsernameChecks(username), [username]);
+
+  const editUsername = () => {
+    if(inputRef.current) {
+      setIsEditingUsername(true);
+      setTimeout(()=> {
+        inputRef.current?.focus()
+      }, 0); 
+    }
+  }
 
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
@@ -159,21 +168,32 @@ const ProfilePage = () => {
 
             <div className="form-control">
               <label className="label">
-                <span className="label-text font-medium">Edit username</span>
+                <span className="label-text font-medium">Edit username</span> 
               </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-success font-semibold">
+              <div className="relative mt-1">
+                <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-base z-10 font-semibold">
                   #
                 </div>
                 <input
+                  ref={inputRef}
                   type="text"
-                  className="input input-bordered w-full pl-8 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors duration-300"
-                  placeholder="yourname"
+                  readOnly={!isEditingUsername}
+                  className={`input input-bordered w-full pl-7 focus:border-transparent focus:outline-none ${isEditingUsername ? "focus:ring-primary focus:ring-1" : "focus:ring-0"} transition-colors duration-300`}
+                  placeholder="Enter your username"
                   value={usernameSuffix}
+                  onBlur={() => setIsEditingUsername(false)}
                   onChange={(event) =>
                     setUsernameSuffix(event.target.value.replace(/^#/, ""))
                   }
                 />
+                
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-base-content/50 hover:text-primary"
+                  onClick={editUsername}
+                >
+                  <Pencil size={18} />
+                </button>                
               </div>
 
               <div className="mt-3 space-y-2 rounded-xl border border-base-300 bg-base-100 p-4">
