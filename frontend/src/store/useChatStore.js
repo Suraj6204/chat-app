@@ -31,7 +31,7 @@ export const useChatStore = create((set, get) => ({
       const res = await axiosInstance.get("/messages/users");
       set({ users: res.data });
     } catch (error) {
-      toast.error(error.response.data.message);
+      toast.error(error.response?.data?.message || "Failed to load users");
     } finally {
       set({ isUsersLoading: false });
     }
@@ -79,18 +79,19 @@ export const useChatStore = create((set, get) => ({
   setReplyPreviewMessage: (message) => set({ replyPreviewMessage: message }),
   clearReplyPreviewMessage: () => set({ replyPreviewMessage: null }),
 
-  moveUserToTop: (user) => 
+  moveUserToTop: (user) =>
     set((state) => {
-      if(!user?._id) return state;
-      return { 
-        users : [user , ...state.users.filter((u) => u._id !== user._id)] 
+      if (!user?._id) return state;
+      return {
+        users: [user, ...state.users.filter((u) => u._id !== user._id)],
       };
     }),
 
   //it sends replied and normal messages and group msg
   sendMessage: async (messageData) => {
     //messageData - {text , image , video}
-    const { selectedUser, replyPreviewMessage, messages , moveUserToTop} = get();
+    const { selectedUser, replyPreviewMessage, messages, moveUserToTop } =
+      get();
     try {
       const payload = {
         ...messageData,
@@ -109,7 +110,7 @@ export const useChatStore = create((set, get) => ({
         moveUserToTop(selectedUser);
       }
     } catch (error) {
-      toast.error(error.response.data.message);
+      toast.error(error.response?.data?.message || "Failed to send message");
     }
   },
 
@@ -284,7 +285,7 @@ export const useChatStore = create((set, get) => ({
       const { targetId, targetType } = modalData;
 
       if (targetType === "user") {
-        await axiosInstance.patch(`/messages/clear/${targetId}`);
+        await axiosInstance.patch(`/messages/hide/${targetId}`);
 
         const updatedUsers = users.filter((u) => u._id !== targetId);
 
@@ -451,7 +452,7 @@ export const useChatStore = create((set, get) => ({
     socket.off("newGroupMessage");
 
     socket.on("newMessage", (newMessage) => {
-      const { selectedUser, messages , users} = get();
+      const { selectedUser, messages, users } = get();
       const senderId = newMessage.senderId?._id || newMessage.senderId;
       const isActivePeerChat =
         selectedUser && !selectedUser.isGroup && selectedUser._id === senderId;
@@ -463,12 +464,25 @@ export const useChatStore = create((set, get) => ({
       }
 
       get().incrementUnread(senderId);
-
-      if(newMessage.senderId && typeof newMessage.senderId === "object"){
-        set((state) => {
-          users : [newMessage.senderId , ...state.users.filter((u) => u._id !== newMessage.senderId._id)]
-        })
+      if (newMessage.senderId && typeof newMessage.senderId === "object") {
+        set((state) => ({
+          users: [
+            newMessage.senderId,
+            ...state.users.filter((u) => u._id !== newMessage.senderId._id),
+          ],
+        }));
       }
+
+      // if (newMessage.senderId && typeof newMessage.senderId === "object") {
+      //   const sender = newMessage.senderId;
+      //   const exists = users.some((u) => u._id === sender._id);
+
+      //   set((state) => ({
+      //     users: exists
+      //       ? [sender, ...state.users.filter((u) => u._id !== sender._id)]
+      //       : [sender, ...state.users],
+      //   }));
+      // }
     });
 
     socket.on("newGroupMessage", ({ message, groupId }) => {

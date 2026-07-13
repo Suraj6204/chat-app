@@ -15,28 +15,33 @@ export const getUsersForSidebar = async (req, res) => {
     // }).select("-password");
 
     const messages = await Message.find({
-      $or: [
-        {senderId: myId},
-        {receiverId : myId}
-      ]
-    }).sort({createdAt : -1 });
+      $or: [{ senderId: myId }, { receiverId: myId }],
+    }).sort({ createdAt: -1 });
 
+    //from message sendrID , get user id and insert into a set
     const userIds = new Set();
-
     messages.forEach((msg) => {
-      if(msg.senderId.toString() === myId.toString()){  // hm jisko message kiye hai , wo dikhega
+      if (msg.senderId.toString() === myId.toString()) {
+        // hm jisko message kiye hai , wo dikhega
         userIds.add(msg.receiverId.toString());
-      }
-      else{
+      } else {
         userIds.add(msg.senderId.toString());
       }
-    })
+    });
 
+    //fetch users from User model (include set wala ids and exclude hidden chats ids)
+    const hiddenChats = req.user.hiddenChats || [];
     const filteredUsers = await User.find({
-      _id: { $in: [...userIds] },
+      _id: { $in: [...userIds], $nin: hiddenChats },
     }).select("-password");
 
-    res.status(200).json(filteredUsers);
+    const userMap = new Map(filteredUsers.map((user) => [user._id.toString(), user]));
+
+    const orderedUsers = [...userIds]
+      .map((id) => userMap.get(id))
+      .filter(Boolean);
+
+    res.status(200).json(orderedUsers);
   } catch (error) {
     console.error("Error in getUsersForSidebar: ", error.message);
     res.status(500).json({ error: "Internal server error" });
@@ -68,6 +73,11 @@ export const getMessages = async (req, res) => {
       ],
       deletedBy: { $ne: myId }, //this helps to not show the msg deleted by you
     }).populate("replyTo", "text image video senderId");
+
+    await User.updateOne(
+      { _id: myId },
+      { $pull: { hiddenChats: userToChatId } },
+    );
     //populate to give proper structure=> {text :"" , replyTo: {text : "" , image: "" , video: "" , senderId: ""}}
 
     await clearUnreadCount(myId, userToChatId);
@@ -156,6 +166,15 @@ export const sendMessage = async (req, res) => {
         groupId: receiverId,
       });
     } else {
+      await User.updateOne(
+        { _id: senderId },
+        { $pull: { hiddenChats: receiverId } },
+      );
+      await User.updateOne(
+        { _id: receiverId },
+        { $pull: { hiddenChats: senderId } },
+      );
+
       await incrementUnreadCount([receiverId], senderId);
 
       const receiverSocketId = getReceiverSocketId(receiverId);
@@ -247,6 +266,24 @@ export const clearChat = async (req, res) => {
   }
 };
 
+export const hideChat = async (req, res) => {
+  try {
+    const { id: targetUserId } = req.params;
+    const myId = req.user._id;
+
+    const updatedUser = await User.findByIdAndUpdate(
+      myId,
+      { $addToSet: { hiddenChats: targetUserId } },
+      { new: true },
+    ).select("-password");
+
+    res.status(200).json(updatedUser);
+  } catch (error) {
+    console.error("Error in hideChat controller:", error.message);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 export const togglePinChat = async (req, res) => {
   try {
     const { id: targetUserId } = req.params;
@@ -315,5 +352,3 @@ const clearUnreadCount = async (userId, conversationId) => {
     { $set: { [`unreadCounts.${conversationId}`]: 0 } },
   );
 };
-
-

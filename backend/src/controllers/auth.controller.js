@@ -18,6 +18,7 @@ const toAuthPayload = (user) => ({
   profilePic: user.profilePic,
   isVerified: user.isVerified,
   unreadCounts: user.unreadCounts,
+  hiddenChats: user.hiddenChats,
 });
 
 export const signup = async (req, res) => {

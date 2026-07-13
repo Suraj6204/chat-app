@@ -19,7 +19,7 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       minlength: 5,
       maxlength: 31,
-      match: /^#[a-z0-9_]{4,30}$/
+      match: /^#[a-z0-9_]{4,30}$/,
     },
     password: {
       type: String,
@@ -41,6 +41,12 @@ const userSchema = new mongoose.Schema(
       },
     ],
     pinnedChats: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    hiddenChats: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
