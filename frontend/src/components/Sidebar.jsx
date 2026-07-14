@@ -53,6 +53,9 @@ const Sidebar = () => {
     menuOptions.userId,
   );
 
+  const selectedGroup = groups.find((g) => g._id === menuOptions.userId);
+  const isCreatorOfGroup = selectedGroup && (selectedGroup.creator === authUser?._id || selectedGroup.creator?._id === authUser?._id);
+
   const filteredUsers = showOnlineOnly
     ? users.filter((user) => onlineUsers.includes(user._id))
     : users;
@@ -388,47 +391,72 @@ const Sidebar = () => {
               `,
           }}
         >
-          <MenuOptionsBox
-            icon={isSelectedContextMenuChatPinned ? PinOff : PinIcon}
-            label={isSelectedContextMenuChatPinned ? "Unpin Chat" : "Pin Chat"}
-            onClick={() => {
-              togglePinChat(menuOptions.userId);
-              setMenuOptions((prev) => ({ ...prev, show: false }));
-            }}
-          />
+          {selectedGroup ? (
+            <>
+              {isCreatorOfGroup ? (
+                <MenuOptionsBox
+                  icon={Trash}
+                  label="Delete Group"
+                  className="text-error hover:bg-error/10"
+                  onClick={() => {
+                    openModal("DeleteGroup", menuOptions.userId);
+                    setMenuOptions((prev) => ({ ...prev, show: false }));
+                  }}
+                />
+              ) : (
+                <MenuOptionsBox
+                  icon={Trash}
+                  label="Leave Group (Coming Soon)"
+                  className="opacity-50 cursor-not-allowed pointer-events-none"
+                  onClick={() => {}}
+                />
+              )}
+            </>
+          ) : (
+            <>
+              <MenuOptionsBox
+                icon={isSelectedContextMenuChatPinned ? PinOff : PinIcon}
+                label={isSelectedContextMenuChatPinned ? "Unpin Chat" : "Pin Chat"}
+                onClick={() => {
+                  togglePinChat(menuOptions.userId);
+                  setMenuOptions((prev) => ({ ...prev, show: false }));
+                }}
+              />
 
-          <hr className="border-base-300 my-1" />
+              <hr className="border-base-300 my-1" />
 
-          <MenuOptionsBox
-            icon={Ban}
-            label="Block"
-            onClick={() => {
-              openModal("Block", menuOptions.userId);
-              setMenuOptions((prev) => ({ ...prev, show: false }));
-            }}
-          />
+              <MenuOptionsBox
+                icon={Ban}
+                label="Block"
+                onClick={() => {
+                  openModal("Block", menuOptions.userId);
+                  setMenuOptions((prev) => ({ ...prev, show: false }));
+                }}
+              />
 
-          <MenuOptionsBox
-            icon={MinusCircle}
-            label="Clear Chat"
-            onClick={() => {
-              openModal("ClearChat", menuOptions.userId);
-              setMenuOptions((prev) => ({ ...prev, show: false }));
-            }}
-          />
+              <MenuOptionsBox
+                icon={MinusCircle}
+                label="Clear Chat"
+                onClick={() => {
+                  openModal("ClearChat", menuOptions.userId);
+                  setMenuOptions((prev) => ({ ...prev, show: false }));
+                }}
+              />
 
-          <MenuOptionsBox
-            icon={Trash}
-            label="Delete Chat"
-            className="text-error hover:bg-error/10"
-            onClick={() => {
-              openModal("DeleteChat", {
-                targetId: menuOptions.userId,
-                targetType: "user",
-              });
-              setMenuOptions((prev) => ({ ...prev, show: false }));
-            }}
-          />
+              <MenuOptionsBox
+                icon={Trash}
+                label="Delete Chat"
+                className="text-error hover:bg-error/10"
+                onClick={() => {
+                  openModal("DeleteChat", {
+                    targetId: menuOptions.userId,
+                    targetType: "user",
+                  });
+                  setMenuOptions((prev) => ({ ...prev, show: false }));
+                }}
+              />
+            </>
+          )}
         </div>
       )}
     </aside>

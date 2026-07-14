@@ -1,6 +1,7 @@
 import Group from "../models/group.model.js";
 import Message from "../models/message.model.js";
 import User from "../models/user.model.js";
+import { io } from "../lib/socket.js";
 
 // 1. Create Group
 export const createGroup = async (req, res) => {
@@ -100,6 +101,38 @@ export const getGroupMessages = async (req, res) => {
     res.status(201).json(messages);
   } catch (error) {
     console.error("Error in getGroupMessages:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// 4. Delete Group (Creator only)
+export const deleteGroup = async (req, res) => {
+  try {
+    const { id: groupId } = req.params;
+    const myId = req.user._id;
+
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ message: "Group not found" });
+    }
+
+    // Verify user is the creator
+    if (group.creator.toString() !== myId.toString()) {
+      return res.status(403).json({ message: "Only the group creator can delete this group" });
+    }
+
+    // Delete all group messages matching receiverId: groupId and conversationType: "group"
+    await Message.deleteMany({ receiverId: groupId, conversationType: "group" });
+
+    // Delete the group
+    await Group.findByIdAndDelete(groupId);
+
+    // Emit groupDeleted socket event to the group's room
+    io.to(`group:${groupId}`).emit("groupDeleted", { groupId });
+
+    res.status(200).json({ message: "Group and its messages deleted successfully" });
+  } catch (error) {
+    console.error("Error in deleteGroup controller:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };

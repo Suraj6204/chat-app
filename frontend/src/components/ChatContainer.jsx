@@ -483,7 +483,14 @@ const ChatContainer = () => {
       )}
 
       {/* Bottom Swap Bar: Input or Multi-Delete Controls */}
-      {isBlocked ? (
+      {selectedUser?.isDeletedGroup ? (
+        <div className="flex flex-col items-center justify-center p-6 bg-base-200 border-t border-base-300 gap-3 animate-fadeIn animate-duration-200">
+          <div className="flex items-center gap-2 text-error font-semibold bg-error/10 px-6 py-3 rounded-xl border border-error/20">
+            <Ban size={18} />
+            <span>This group no longer exists.</span>
+          </div>
+        </div>
+      ) : isBlocked ? (
         <div className="flex flex-col items-center justify-center p-6 bg-base-200 border-t border-base-300 gap-3">
           {isBlockedByMe ? (
             <>

@@ -26,7 +26,8 @@ const HomePage = () => {
     clearChat,
     deleteChat,
     blockUser,
-    unblockUser
+    unblockUser,
+    deleteGroup
   } = useChatStore();
 
   const { initCallListeners } = useCallStore();
@@ -91,6 +92,14 @@ const HomePage = () => {
       actionType: "primary", // Red color button ke liye
       showDeleteEveryone: false,
       onConfirmMe: () => { unblockUser(modalData); },
+      onConfirmEveryone: null
+    },
+    DeleteGroup: {
+      title: "Delete this group? This will permanently delete the group and all its messages.",
+      confirmText: "Delete Group",
+      actionType: "Delete",
+      showDeleteEveryone: false,
+      onConfirmMe: () => deleteGroup(modalData),
       onConfirmEveryone: null
     }
   };

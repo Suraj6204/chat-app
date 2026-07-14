@@ -403,6 +403,22 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
+  deleteGroup: async (groupId) => {
+    try {
+      const { closeModal } = get();
+      await axiosInstance.delete(`/groups/${groupId}`);
+      set((state) => ({
+        groups: state.groups.filter((g) => g._id !== groupId),
+        selectedUser: state.selectedUser?._id === groupId ? null : state.selectedUser,
+      }));
+      toast.success("Group deleted successfully");
+      closeModal();
+    } catch (error) {
+      console.log("Error deleting group:", error);
+      toast.error(error.response?.data?.message || "Failed to delete group");
+    }
+  },
+
   subscribeToMessages: () => {
     //Receiveing
     const socket = useAuthStore.getState().socket;
@@ -551,12 +567,27 @@ export const useChatStore = create((set, get) => ({
         set({ groups: [...groups, groupData] });
       }
     });
+
+    socket.off("groupDeleted");
+    socket.on("groupDeleted", ({ groupId }) => {
+      const { selectedUser, groups } = get();
+      set({
+        groups: groups.filter((g) => g._id !== groupId),
+      });
+
+      if (selectedUser?.isGroup && selectedUser._id === groupId) {
+        set({
+          selectedUser: { ...selectedUser, isDeletedGroup: true },
+        });
+      }
+    });
   },
 
   unsubscribeFromGroupUpdates: () => {
     const socket = useAuthStore.getState().socket;
     if (!socket) return;
     socket.off("addNewGroupToSidebar");
+    socket.off("groupDeleted");
   },
 
   unsubscribeFromGroupMessages: () => {
