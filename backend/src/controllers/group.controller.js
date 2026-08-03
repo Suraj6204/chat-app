@@ -1,7 +1,7 @@
 import Group from "../models/group.model.js";
 import Message from "../models/message.model.js";
 import User from "../models/user.model.js";
-import { io } from "../lib/socket.js";
+import { io, getReceiverSocketId } from "../lib/socket.js";
 import { createSystemMessage } from "../utils/createSystemMessage.helper.js";
 
 // 1. Create Group
@@ -14,7 +14,7 @@ export const createGroup = async (req, res) => {
       return res.status(400).json({ message: "Group name is required" });
     }
 
-    // Ensure memberIds is an array and include the creator in members set
+    // Ensure memberIds is an array and include creator in members set
     const allMembers = [...new Set([...(memberIds || []), myId.toString()])];
 
     const newGroup = await Group.create({
@@ -54,14 +54,13 @@ export const createGroup = async (req, res) => {
   }
 };
 
-// 2. Fetch my groups (for sidebar) - excluding hidden groups
+// 2. Fetch my groups (for sidebar)
 export const getMyGroups = async (req, res) => {
   try {
     const myId = req.user._id;
 
     const groups = await Group.find({
       members: { $in: [myId] },
-      hiddenForUsers: { $ne: myId },
     }).populate("members", "-password");
 
     res.status(200).json(groups);
@@ -115,14 +114,8 @@ export const deleteGroup = async (req, res) => {
       return res.status(403).json({ message: "Only the group creator can delete this group" });
     }
 
-    // Mark group as deleted so it stays visible for other members for historical viewing
+    // Mark group as deleted so it stays visible for historical viewing but is blocked for new messages
     group.isDeleted = true;
-
-    // Automatically hide group for creator when creator deletes their group
-    if (!group.hiddenForUsers.includes(myId)) {
-      group.hiddenForUsers.push(myId);
-    }
-
     await group.save();
 
     // Create system message
@@ -251,25 +244,177 @@ export const leaveGroup = async (req, res) => {
   }
 };
 
-// 6. Hide Group (per user)
-export const hideGroup = async (req, res) => {
+// 6. Add Members to Group (anyone in group can add)
+export const addMembers = async (req, res) => {
   try {
     const { id: groupId } = req.params;
+    const { memberIds } = req.body;
     const myId = req.user._id;
+
+    if (!memberIds || !Array.isArray(memberIds) || memberIds.length === 0) {
+      return res.status(400).json({ message: "No members specified to add" });
+    }
 
     const group = await Group.findById(groupId);
     if (!group) {
       return res.status(404).json({ message: "Group not found" });
     }
 
-    if (!group.hiddenForUsers.includes(myId)) {
-      group.hiddenForUsers.push(myId);
-      await group.save();
+    // Check if requester is a member of the group
+    const isRequesterMember = group.members.some(
+      (m) => m.toString() === myId.toString()
+    );
+    if (!isRequesterMember) {
+      return res.status(403).json({ message: "You must be a group member to add new members" });
     }
 
-    res.status(200).json({ message: "Group hidden successfully", groupId });
+    // Find users to add
+    const usersToAdd = await User.find({ _id: { $in: memberIds } }).select("fullName");
+    if (usersToAdd.length === 0) {
+      return res.status(404).json({ message: "Users to add not found" });
+    }
+
+    // Append new member IDs to group members (avoiding duplicates)
+    const addedMemberIds = [];
+    usersToAdd.forEach((u) => {
+      const uIdStr = u._id.toString();
+      if (!group.members.some((m) => m.toString() === uIdStr)) {
+        group.members.push(u._id);
+        addedMemberIds.push(u._id);
+      }
+    });
+
+    if (addedMemberIds.length === 0) {
+      return res.status(400).json({ message: "Selected users are already members of this group" });
+    }
+
+    await group.save();
+
+    const updatedGroup = await Group.findById(groupId).populate(
+      "members",
+      "-password"
+    );
+
+    // Create system message: "Suraj added Rahul, Priya"
+    const addedNames = usersToAdd.map((u) => u.fullName).join(", ");
+    const systemMsg = await createSystemMessage({
+      senderId: myId,
+      groupId,
+      text: `${req.user.fullName} added ${addedNames}`,
+      systemEvent: "member_added",
+    });
+
+    if (systemMsg) {
+      io.to(`group:${groupId}`).emit("newGroupMessage", {
+        message: systemMsg,
+        groupId,
+      });
+    }
+
+    // Notify newly added members so the group is added to their sidebar instantly!
+    addedMemberIds.forEach((newMemberId) => {
+      const socketId = getReceiverSocketId(newMemberId.toString());
+      if (socketId) {
+        io.to(socketId).emit("addNewGroupToSidebar", updatedGroup);
+        const targetSocket = io.sockets.sockets.get(socketId);
+        if (targetSocket) {
+          targetSocket.join(`group:${groupId}`);
+        }
+      }
+    });
+
+    // Broadcast memberJoinedGroup to existing room members
+    io.to(`group:${groupId}`).emit("memberJoinedGroup", {
+      groupId,
+      updatedGroup,
+    });
+
+    res.status(200).json(updatedGroup);
   } catch (error) {
-    console.error("Error in hideGroup controller:", error);
+    console.error("Error in addMembers controller:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
+// 7. Remove Member from Group (creator only)
+export const removeMember = async (req, res) => {
+  try {
+    const { id: groupId } = req.params;
+    const { memberId } = req.body;
+    const myId = req.user._id;
+
+    if (!memberId) {
+      return res.status(400).json({ message: "Member ID is required" });
+    }
+
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ message: "Group not found" });
+    }
+
+    // Verify requester is creator
+    if (group.creator.toString() !== myId.toString()) {
+      return res.status(403).json({ message: "Only the group creator can remove members" });
+    }
+
+    // Cannot remove creator self
+    if (memberId.toString() === myId.toString()) {
+      return res.status(400).json({ message: "Group creator cannot be removed" });
+    }
+
+    const isMember = group.members.some(
+      (m) => m.toString() === memberId.toString()
+    );
+    if (!isMember) {
+      return res.status(400).json({ message: "User is not a member of this group" });
+    }
+
+    const removedUser = await User.findById(memberId).select("fullName");
+    if (!removedUser) {
+      return res.status(404).json({ message: "User to remove not found" });
+    }
+
+    // Remove user from members and admins
+    group.members = group.members.filter(
+      (m) => m.toString() !== memberId.toString()
+    );
+    group.admins = group.admins.filter(
+      (a) => a.toString() !== memberId.toString()
+    );
+
+    await group.save();
+
+    const updatedGroup = await Group.findById(groupId).populate(
+      "members",
+      "-password"
+    );
+
+    // Create system message: "Suraj removed Rahul from the group"
+    const systemMsg = await createSystemMessage({
+      senderId: myId,
+      groupId,
+      text: `${req.user.fullName} removed ${removedUser.fullName} from the group`,
+      systemEvent: "member_removed",
+    });
+
+    if (systemMsg) {
+      io.to(`group:${groupId}`).emit("newGroupMessage", {
+        message: systemMsg,
+        groupId,
+      });
+    }
+
+    // Broadcast memberLeftGroup to the group room
+    io.to(`group:${groupId}`).emit("memberLeftGroup", {
+      groupId,
+      leftUserId: memberId,
+      updatedGroup,
+    });
+
+    res.status(200).json(updatedGroup);
+  } catch (error) {
+    console.error("Error in removeMember controller:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+

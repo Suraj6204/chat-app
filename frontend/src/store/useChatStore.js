@@ -419,19 +419,36 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
-  hideGroup: async (groupId) => {
+
+
+  addMembersToGroup: async (groupId, memberIds) => {
     try {
       const { closeModal, selectedUser, groups } = get();
-      await axiosInstance.patch(`/groups/hide/${groupId}`);
+      const res = await axiosInstance.post(`/groups/add-members/${groupId}`, { memberIds });
       set({
-        groups: groups.filter((g) => g._id !== groupId),
-        selectedUser: selectedUser?._id === groupId ? null : selectedUser,
+        groups: groups.map((g) => (g._id === groupId ? res.data : g)),
+        selectedUser: selectedUser?._id === groupId ? { ...res.data, isGroup: true } : selectedUser,
       });
-      toast.success("Group removed from sidebar");
+      toast.success("Members added successfully");
       closeModal();
     } catch (error) {
-      console.log("Error hiding group:", error);
-      toast.error(error.response?.data?.message || "Failed to hide group");
+      console.log("Error adding members to group:", error);
+      toast.error(error.response?.data?.message || "Failed to add members");
+    }
+  },
+
+  removeMemberFromGroup: async (groupId, memberId) => {
+    try {
+      const { selectedUser, groups } = get();
+      const res = await axiosInstance.post(`/groups/remove-member/${groupId}`, { memberId });
+      set({
+        groups: groups.map((g) => (g._id === groupId ? res.data : g)),
+        selectedUser: selectedUser?._id === groupId ? { ...res.data, isGroup: true } : selectedUser,
+      });
+      toast.success("Member removed from group");
+    } catch (error) {
+      console.log("Error removing member from group:", error);
+      toast.error(error.response?.data?.message || "Failed to remove member");
     }
   },
 
@@ -642,6 +659,17 @@ export const useChatStore = create((set, get) => ({
         }
       }
     });
+
+    socket.off("memberJoinedGroup");
+    socket.on("memberJoinedGroup", ({ groupId, updatedGroup }) => {
+      const { selectedUser, groups } = get();
+      set({
+        groups: groups.map((g) => (g._id === groupId ? updatedGroup : g)),
+      });
+      if (selectedUser?.isGroup && selectedUser._id === groupId) {
+        set({ selectedUser: { ...updatedGroup, isGroup: true } });
+      }
+    });
   },
 
   unsubscribeFromGroupUpdates: () => {
@@ -650,6 +678,7 @@ export const useChatStore = create((set, get) => ({
     socket.off("addNewGroupToSidebar");
     socket.off("groupDeleted");
     socket.off("memberLeftGroup");
+    socket.off("memberJoinedGroup");
   },
 
   unsubscribeFromGroupMessages: () => {

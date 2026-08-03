@@ -13,6 +13,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import ConfirmationModal from "../components/ConfirmationModal";
 import ForwardModal from "../components/ForwardModal";
 import GroupDetailsModal from "../components/GroupDetailsModal";
+import GroupInfoModal from "../components/GroupInfoModal";
 
 const HomePage = () => {
   const {
@@ -142,6 +143,7 @@ const HomePage = () => {
 
       <ForwardModal />
       {isModalOpen && modalType === "GroupDetails" && <GroupDetailsModal />}
+      {isModalOpen && modalType === "GroupInfo" && <GroupInfoModal />}
     </div>
   );
 };

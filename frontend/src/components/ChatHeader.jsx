@@ -1,4 +1,4 @@
-import { X, Phone, Video, MoreVertical, LogOut, Trash } from "lucide-react";
+import { X, Phone, Video, MoreVertical, LogOut, Trash, UserPlus } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useChatStore } from "../store/useChatStore";
 import toast from "react-hot-toast";
@@ -28,7 +28,10 @@ const ChatHeader = () => {
     <div className="p-2.5 border-b border-base-300">
       <div className="flex items-center justify-between">
         {/* Left side: User Info */}
-        <div className="flex items-center gap-3">
+        <div
+          onClick={() => selectedUser?.isGroup && openModal("GroupInfo", selectedUser._id)}
+          className={`flex items-center gap-3 ${selectedUser?.isGroup ? "cursor-pointer hover:opacity-80 transition-opacity" : ""}`}
+        >
           <div className="avatar">
             <div className="size-10 rounded-full relative flex items-center justify-center bg-neutral text-neutral-content font-bold overflow-hidden border border-base-300">
               {selectedUser?.isGroup ? (
@@ -54,7 +57,9 @@ const ChatHeader = () => {
 
             {selectedUser?.isGroup ? (
               <p className="text-xs text-base-content/60">
-                {selectedUser.members?.length || 0} members
+                {selectedUser.isDeletedGroup || selectedUser.isDeleted
+                  ? "Deleted Group"
+                  : `${selectedUser.members?.length || 0} members`}
               </p>
             ) : (
               <p className="text-sm text-base-content/70">
@@ -102,16 +107,29 @@ const ChatHeader = () => {
                 <MoreVertical size={20} className="text-base-content/70" />
               </label>
               <ul tabIndex={0} className="dropdown-content z-[1] menu p-2 shadow-lg bg-base-200 rounded-box w-48 mt-2 border border-base-300">
-                <li>
-                  <button
-                    className="flex items-center gap-3 py-2 text-error hover:bg-error/10"
-                    onClick={() => openModal("LeaveGroup", selectedUser._id)}
-                  >
-                    <LogOut size={16} />
-                    <span className="font-medium">Leave Group</span>
-                  </button>
-                </li>
-                {isCreatorOfGroup && (
+                {!selectedUser.isDeletedGroup && !selectedUser.isDeleted && (
+                  <li>
+                    <button
+                      className="flex items-center gap-3 py-2"
+                      onClick={() => openModal("AddMember", selectedUser._id)}
+                    >
+                      <UserPlus size={16} />
+                      <span className="font-medium">Add Member</span>
+                    </button>
+                  </li>
+                )}
+                {!selectedUser.isDeletedGroup && !selectedUser.isDeleted && (
+                  <li>
+                    <button
+                      className="flex items-center gap-3 py-2 text-error hover:bg-error/10"
+                      onClick={() => openModal("LeaveGroup", selectedUser._id)}
+                    >
+                      <LogOut size={16} />
+                      <span className="font-medium">Leave Group</span>
+                    </button>
+                  </li>
+                )}
+                {isCreatorOfGroup && !selectedUser.isDeletedGroup && !selectedUser.isDeleted && (
                   <li>
                     <button
                       className="flex items-center gap-3 py-2 text-error hover:bg-error/10"

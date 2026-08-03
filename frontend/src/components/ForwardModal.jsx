@@ -1,39 +1,63 @@
-// modal to select users to forward messages
+// modal to select users to forward messages or add group members
 import { useState } from 'react';
 import { X, Search, ArrowRight } from 'lucide-react';
 import { useChatStore } from '../store/useChatStore';
 import { useAuthStore } from '../store/useAuthStore';
 
 const ForwardModal = () => {
-  const { isModalOpen, modalType, modalData ,openModal , closeModal, users, executeForward } = useChatStore();
+  const {
+    isModalOpen,
+    modalType,
+    modalData,
+    openModal,
+    closeModal,
+    users,
+    groups,
+    executeForward,
+    addMembersToGroup,
+    selectedUser,
+  } = useChatStore();
   const { authUser } = useAuthStore();
-  
+
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedUserIds, setSelectedUserIds] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  if (!isModalOpen || modalType !== 'Forward') return null;
+  if (!isModalOpen || (modalType !== 'Forward' && modalType !== 'AddMember')) return null;
   const isGroupContext = modalData === "CreateGroup";
+  const isAddMemberContext = modalType === "AddMember";
+  const targetGroupId = isAddMemberContext ? modalData : null;
+  const currentGroup = groups.find((g) => g._id === targetGroupId) || (selectedUser?.isGroup ? selectedUser : null);
 
-  // Toggle selected users for multiple forward support
+  const isAlreadyMember = (userId) => {
+    if (!isAddMemberContext || !currentGroup?.members) return false;
+    return currentGroup.members.some((m) => (m._id || m).toString() === userId.toString());
+  };
+
+  // Toggle selected users for multiple selection support
   const handleToggleUser = (userId) => {
+    if (isAlreadyMember(userId)) return;
     setSelectedUserIds((prev) =>
       prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
     );
   };
 
   // Filter users based on input query string
-  const filteredUsers = users.filter(user => 
+  const filteredUsers = users.filter((user) =>
     user.fullName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleForwardSubmit = async () => {
     if (selectedUserIds.length === 0) return;
- 
+
     if (isGroupContext) {
       openModal("GroupDetails", selectedUserIds);
-    } 
-    else {
+    } else if (isAddMemberContext) {
+      setIsSubmitting(true);
+      await addMembersToGroup(targetGroupId, selectedUserIds);
+      setIsSubmitting(false);
+      setSelectedUserIds([]);
+    } else {
       setIsSubmitting(true);
       await executeForward(selectedUserIds);
       setIsSubmitting(false);
@@ -43,7 +67,7 @@ const ForwardModal = () => {
 
   return (
     <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      {/* Container Box: Pure DaisyUI Theme Surface */}
+      {/* Container Box */}
       <div className="w-full max-w-md bg-base-100 border border-base-300 rounded-2xl flex flex-col max-h-[85vh] text-base-content shadow-2xl overflow-hidden">
         
         {/* Header Block */}
@@ -57,7 +81,7 @@ const ForwardModal = () => {
               <X size={20} />
             </button>
             <h3 className="text-lg font-semibold text-base-content">
-              {isGroupContext ? "Add group members" : "Forward message to"}
+              {isGroupContext ? "Add group members" : isAddMemberContext ? "Add new members to group" : "Forward message to"}
             </h3>
           </div>
         </div>
@@ -78,19 +102,24 @@ const ForwardModal = () => {
 
         {/* Users Selection Scroll Area */}
         <div className="flex-1 overflow-y-auto px-2 pb-4 custom-scrollbar">
-          <p className="text-xs font-bold text-primary px-4 pt-2 pb-3 tracking-wider uppercase">Recent chats</p>
+          <p className="text-xs font-bold text-primary px-4 pt-2 pb-3 tracking-wider uppercase">Select contacts</p>
           
           <div className="space-y-0.5">
             {filteredUsers.map((user) => {
               const isMe = user._id === authUser?._id;
+              const alreadyMember = isAlreadyMember(user._id);
               const isSelected = selectedUserIds.includes(user._id);
               
               return (
                 <div 
                   key={user._id}
-                  onClick={() => handleToggleUser(user._id)}
-                  className={`flex items-center gap-4 px-4 py-3 hover:bg-base-200 cursor-pointer rounded-xl transition-colors ${
-                    isSelected ? 'bg-base-200' : ''
+                  onClick={() => !alreadyMember && handleToggleUser(user._id)}
+                  className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-colors ${
+                    alreadyMember
+                      ? 'opacity-50 cursor-not-allowed bg-base-200/30'
+                      : isSelected
+                        ? 'bg-base-200 cursor-pointer'
+                        : 'hover:bg-base-200 cursor-pointer'
                   }`}
                 >
                   {/* Styled DaisyUI Checkbox */}
@@ -98,13 +127,14 @@ const ForwardModal = () => {
                     <input 
                       type="checkbox"
                       checked={isSelected}
+                      disabled={alreadyMember}
                       onChange={() => handleToggleUser(user._id)}
                       onClick={(e) => e.stopPropagation()}
                       className="checkbox checkbox-primary checkbox-sm rounded-md border-base-content/30"
                     />
                   </div>
 
-                  {/* Profile Picture (DaisyUI Avatar Architecture) */}
+                  {/* Profile Picture */}
                   <div className="avatar">
                     <div className="size-11 rounded-full border border-base-300">
                       <img src={user.profilePic || "/avatar.png"} alt={user.fullName} className="object-cover" />
@@ -117,7 +147,7 @@ const ForwardModal = () => {
                       {isMe ? "Suraj (You)" : user.fullName}
                     </h4>
                     <p className="text-xs text-base-content/60 truncate mt-0.5">
-                      {isMe ? "Message yourself" : "Active chat session"}
+                      {alreadyMember ? "Already a member" : isMe ? "Group creator" : "Contact"}
                     </p>
                   </div>
                 </div>
@@ -143,6 +173,8 @@ const ForwardModal = () => {
             >
               {isGroupContext ? (
                 <><span>Next</span><ArrowRight size={16} /></>
+              ) : isAddMemberContext ? (
+                <span>{isSubmitting ? "Adding..." : "Add Members"}</span>
               ) : (
                 <span>{isSubmitting ? "Forwarding..." : "Forward"}</span>
               )}
