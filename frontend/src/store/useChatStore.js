@@ -405,17 +405,56 @@ export const useChatStore = create((set, get) => ({
 
   deleteGroup: async (groupId) => {
     try {
-      const { closeModal } = get();
+      const { closeModal, selectedUser, groups } = get();
       await axiosInstance.delete(`/groups/${groupId}`);
-      set((state) => ({
-        groups: state.groups.filter((g) => g._id !== groupId),
-        selectedUser: state.selectedUser?._id === groupId ? null : state.selectedUser,
-      }));
+      set({
+        groups: groups.filter((g) => g._id !== groupId),
+        selectedUser: selectedUser?._id === groupId ? null : selectedUser,
+      });
       toast.success("Group deleted successfully");
       closeModal();
     } catch (error) {
       console.log("Error deleting group:", error);
       toast.error(error.response?.data?.message || "Failed to delete group");
+    }
+  },
+
+  hideGroup: async (groupId) => {
+    try {
+      const { closeModal, selectedUser, groups } = get();
+      await axiosInstance.patch(`/groups/hide/${groupId}`);
+      set({
+        groups: groups.filter((g) => g._id !== groupId),
+        selectedUser: selectedUser?._id === groupId ? null : selectedUser,
+      });
+      toast.success("Group removed from sidebar");
+      closeModal();
+    } catch (error) {
+      console.log("Error hiding group:", error);
+      toast.error(error.response?.data?.message || "Failed to hide group");
+    }
+  },
+
+  leaveGroup: async (groupId) => {
+    try {
+      const { closeModal, selectedUser, groups } = get();
+      await axiosInstance.post(`/groups/leave/${groupId}`);
+
+      set({
+        groups: groups.filter((g) => g._id !== groupId),
+        selectedUser: selectedUser?._id === groupId ? null : selectedUser,
+      });
+
+      const socket = useAuthStore.getState().socket;
+      if (socket) {
+        socket.emit("leaveGroupRoom", { groupId });
+      }
+
+      toast.success("Left group successfully");
+      closeModal();
+    } catch (error) {
+      console.log("Error leaving group:", error);
+      toast.error(error.response?.data?.message || "Failed to leave group");
     }
   },
 
@@ -569,16 +608,38 @@ export const useChatStore = create((set, get) => ({
     });
 
     socket.off("groupDeleted");
-    socket.on("groupDeleted", ({ groupId }) => {
-      const { selectedUser, groups } = get();
+    socket.on("groupDeleted", ({ groupId, systemMessage }) => {
+      const { selectedUser, groups, messages } = get();
       set({
-        groups: groups.filter((g) => g._id !== groupId),
+        groups: groups.map((g) => (g._id === groupId ? { ...g, isDeletedGroup: true } : g)),
       });
 
       if (selectedUser?.isGroup && selectedUser._id === groupId) {
+        const alreadyHasMsg = systemMessage && messages.some((m) => m._id === systemMessage._id);
         set({
           selectedUser: { ...selectedUser, isDeletedGroup: true },
+          messages: systemMessage && !alreadyHasMsg ? [...messages, systemMessage] : messages,
         });
+      }
+    });
+
+    socket.off("memberLeftGroup");
+    socket.on("memberLeftGroup", ({ groupId, leftUserId, updatedGroup }) => {
+      const { selectedUser, groups } = get();
+      const currentUserId = useAuthStore.getState().authUser?._id;
+
+      if (leftUserId === currentUserId) {
+        set({
+          groups: groups.filter((g) => g._id !== groupId),
+          selectedUser: selectedUser?._id === groupId ? null : selectedUser,
+        });
+      } else {
+        set({
+          groups: groups.map((g) => (g._id === groupId ? updatedGroup : g)),
+        });
+        if (selectedUser?.isGroup && selectedUser._id === groupId) {
+          set({ selectedUser: { ...updatedGroup, isGroup: true } });
+        }
       }
     });
   },
@@ -588,6 +649,7 @@ export const useChatStore = create((set, get) => ({
     if (!socket) return;
     socket.off("addNewGroupToSidebar");
     socket.off("groupDeleted");
+    socket.off("memberLeftGroup");
   },
 
   unsubscribeFromGroupMessages: () => {

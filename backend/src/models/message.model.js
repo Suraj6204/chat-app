@@ -41,6 +41,14 @@ const messageSchema = new mongoose.Schema(
             ref: "Message",
             default: null
         },
+        isSystemMessage: {
+            type: Boolean,
+            default: false
+        },
+        systemEvent: {
+            type: String,
+            default: null
+        },
     },
     { timestamps: true }
 );

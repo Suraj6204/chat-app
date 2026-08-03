@@ -27,7 +27,8 @@ const HomePage = () => {
     deleteChat,
     blockUser,
     unblockUser,
-    deleteGroup
+    deleteGroup,
+    leaveGroup
   } = useChatStore();
 
   const { initCallListeners } = useCallStore();
@@ -100,6 +101,14 @@ const HomePage = () => {
       actionType: "Delete",
       showDeleteEveryone: false,
       onConfirmMe: () => deleteGroup(modalData),
+      onConfirmEveryone: null
+    },
+    LeaveGroup: {
+      title: "Are you sure you want to leave this group?",
+      confirmText: "Leave Group",
+      actionType: "Delete",
+      showDeleteEveryone: false,
+      onConfirmMe: () => leaveGroup(modalData),
       onConfirmEveryone: null
     }
   };

@@ -223,21 +223,32 @@ const ChatContainer = () => {
         ref={scrollContainerRef}
         onScroll={handleScroll}
       >
-        {messages.map((message) => (
-          <div
-            key={message._id}
-            id={`msg-${message._id}`}
-            className={`flex items-center relative group w-full transition-all duration-300 rounded-lg ${
-              highlightedMessageId === message._id
-                ? "bg-primary/20 ring-2 ring-primary/50 py-2"
-                : isSelectionMode
-                  ? selectedMessageIds.includes(message._id)
-                    ? message.isDeletedEveryone
-                      ? "bg-base-300/70"
-                      : "bg-base-200 cursor-pointer"
-                    : "hover:bg-base-200 cursor-pointer"
-                  : "hover:bg-base-200/30"
-            }`}
+        {messages.map((message) =>
+          message.isSystemMessage ? (
+            <div
+              key={message._id}
+              id={`msg-${message._id}`}
+              className="flex justify-center my-3 w-full select-none"
+            >
+              <span className="bg-base-200/90 text-base-content/70 text-xs px-4 py-1.5 rounded-full shadow-sm text-center font-medium border border-base-300/40">
+                {message.text}
+              </span>
+            </div>
+          ) : (
+            <div
+              key={message._id}
+              id={`msg-${message._id}`}
+              className={`flex items-center relative group w-full transition-all duration-300 rounded-lg ${
+                highlightedMessageId === message._id
+                  ? "bg-primary/20 ring-2 ring-primary/50 py-2"
+                  : isSelectionMode
+                    ? selectedMessageIds.includes(message._id)
+                      ? message.isDeletedEveryone
+                        ? "bg-base-300/70"
+                        : "bg-base-200 cursor-pointer"
+                      : "hover:bg-base-200 cursor-pointer"
+                    : "hover:bg-base-200/30"
+              }`}
             onClick={() =>
               isSelectionMode &&
               !message.isDeletedEveryone &&
@@ -483,7 +494,7 @@ const ChatContainer = () => {
       )}
 
       {/* Bottom Swap Bar: Input or Multi-Delete Controls */}
-      {selectedUser?.isDeletedGroup ? (
+      {selectedUser?.isDeletedGroup || selectedUser?.isDeleted ? (
         <div className="flex flex-col items-center justify-center p-6 bg-base-200 border-t border-base-300 gap-3 animate-fadeIn animate-duration-200">
           <div className="flex items-center gap-2 text-error font-semibold bg-error/10 px-6 py-3 rounded-xl border border-error/20">
             <Ban size={18} />

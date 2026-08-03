@@ -18,13 +18,13 @@ export const getUsersForSidebar = async (req, res) => {
       $or: [{ senderId: myId }, { receiverId: myId }],
     }).sort({ createdAt: -1 });
 
-    //from message sendrID , get user id and insert into a set
+    //from message senderID , get user id and insert into a set
     const userIds = new Set();
     messages.forEach((msg) => {
       if (msg.senderId.toString() === myId.toString()) {
         // hm jisko message kiye hai , wo dikhega
         userIds.add(msg.receiverId.toString());
-      } else {
+      } else { 
         userIds.add(msg.senderId.toString());
       }
     });

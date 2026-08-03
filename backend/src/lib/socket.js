@@ -158,6 +158,14 @@ io.on("connection", (socket) => {
       }
     });
   });
+
+  // Handle leaving group room
+  socket.on("leaveGroupRoom", ({ groupId }) => {
+    if (!groupId) return;
+    const roomName = `group:${groupId}`;
+    socket.leave(roomName);
+    console.log(`Socket ${socket.id} left room: ${roomName}`);
+  });
 });
 
 export { io, app, server };

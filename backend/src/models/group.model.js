@@ -33,6 +33,16 @@ const groupSchema = new mongoose.Schema(
         ref: "User",
       },
     ],
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    hiddenForUsers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
   },
   { timestamps: true }
 );

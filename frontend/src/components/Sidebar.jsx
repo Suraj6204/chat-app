@@ -7,6 +7,7 @@ import {
   PinIcon,
   PinOff,
   MessageSquare,
+  LogOut,
 } from "lucide-react";
 import React, { useState, useEffect } from "react";
 import { useChatStore } from "../store/useChatStore";
@@ -281,7 +282,11 @@ const Sidebar = () => {
                       </div>
                     </div>
                     <div className="text-xs text-base-content/60 truncate mt-0.5">
-                      {group.members?.length || 0} members
+                      {group.isDeletedGroup || group.isDeleted ? (
+                        <span className="text-error font-medium">Deleted Group</span>
+                      ) : (
+                        `${group.members?.length || 0} members`
+                      )}
                     </div>
                   </div>
                 </button>
@@ -393,7 +398,16 @@ const Sidebar = () => {
         >
           {selectedGroup ? (
             <>
-              {isCreatorOfGroup ? (
+              <MenuOptionsBox
+                icon={LogOut}
+                label="Leave Group"
+                className="text-error hover:bg-error/10"
+                onClick={() => {
+                  openModal("LeaveGroup", menuOptions.userId);
+                  setMenuOptions((prev) => ({ ...prev, show: false }));
+                }}
+              />
+              {isCreatorOfGroup && (
                 <MenuOptionsBox
                   icon={Trash}
                   label="Delete Group"
@@ -402,13 +416,6 @@ const Sidebar = () => {
                     openModal("DeleteGroup", menuOptions.userId);
                     setMenuOptions((prev) => ({ ...prev, show: false }));
                   }}
-                />
-              ) : (
-                <MenuOptionsBox
-                  icon={Trash}
-                  label="Leave Group (Coming Soon)"
-                  className="opacity-50 cursor-not-allowed pointer-events-none"
-                  onClick={() => {}}
                 />
               )}
             </>
